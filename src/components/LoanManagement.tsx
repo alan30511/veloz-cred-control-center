@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, DollarSign, Calendar } from "lucide-react";
+import { Plus, DollarSign, Calendar, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Loan {
@@ -50,6 +50,7 @@ const LoanManagement = () => {
   ]);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingLoan, setEditingLoan] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     clientId: "",
     amount: "",
@@ -119,6 +120,28 @@ const LoanManagement = () => {
       installments: ""
     });
     setIsFormOpen(false);
+  };
+
+  const handleEditRate = (loanId: string, newRate: number) => {
+    setLoans(prev => prev.map(loan => {
+      if (loan.id === loanId) {
+        const { totalAmount, monthlyPayment } = calculateLoanDetails(loan.amount, newRate, loan.installments);
+        return {
+          ...loan,
+          interestRate: newRate,
+          totalAmount,
+          monthlyPayment
+        };
+      }
+      return loan;
+    }));
+
+    toast({
+      title: "Taxa atualizada",
+      description: `Taxa de juros alterada para ${newRate}% ao mês`
+    });
+
+    setEditingLoan(null);
   };
 
   const previewCalculation = () => {
@@ -208,6 +231,7 @@ const LoanManagement = () => {
                   <Input
                     id="interestRate"
                     type="number"
+                    step="0.1"
                     value={formData.interestRate}
                     onChange={(e) => setFormData({...formData, interestRate: e.target.value})}
                     placeholder="20"
@@ -258,7 +282,7 @@ const LoanManagement = () => {
           <Card key={loan.id}>
             <CardContent className="p-6">
               <div className="flex justify-between items-start">
-                <div className="space-y-2">
+                <div className="space-y-2 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-lg">{loan.clientName}</h3>
                     <span className={`px-2 py-1 rounded-full text-xs ${
@@ -294,7 +318,45 @@ const LoanManagement = () => {
                     </div>
                     <div className="flex items-center gap-1">
                       <DollarSign className="h-4 w-4" />
-                      Juros: {loan.interestRate}% a.m.
+                      {editingLoan === loan.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            defaultValue={loan.interestRate}
+                            className="w-20 h-6 text-xs"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleEditRate(loan.id, parseFloat(e.currentTarget.value));
+                              }
+                              if (e.key === 'Escape') {
+                                setEditingLoan(null);
+                              }
+                            }}
+                            onBlur={(e) => {
+                              if (e.target.value !== loan.interestRate.toString()) {
+                                handleEditRate(loan.id, parseFloat(e.target.value));
+                              } else {
+                                setEditingLoan(null);
+                              }
+                            }}
+                            autoFocus
+                          />
+                          <span>% a.m.</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <span>Juros: {loan.interestRate}% a.m.</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => setEditingLoan(loan.id)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
