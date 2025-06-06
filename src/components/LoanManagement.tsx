@@ -68,7 +68,9 @@ const LoanManagement = () => {
   ];
 
   const calculateLoanDetails = (amount: number, interestRate: number, installments: number) => {
-    const totalInterest = (amount * interestRate * installments) / 100;
+    // Aplica a taxa de juros de forma cumulativa mensal
+    const totalInterestRate = interestRate * installments;
+    const totalInterest = (amount * totalInterestRate) / 100;
     const totalAmount = amount + totalInterest;
     const monthlyPayment = totalAmount / installments;
     
