@@ -2,71 +2,63 @@
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
-import { 
-  DollarSign, 
-  Users, 
-  Calculator, 
-  Calendar, 
-  Settings, 
-  Crown,
-  User
-} from "lucide-react";
+import { Home, Users, DollarSign, Calendar, Settings, Crown, User } from "lucide-react";
 
 interface AppSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
-const AppSidebar = ({ activeTab, onTabChange }: AppSidebarProps) => {
-  const mainMenuItems = [
-    {
-      title: "Dashboard",
-      url: "dashboard",
-      icon: DollarSign,
-    },
-    {
-      title: "Clientes",
-      url: "clients",
-      icon: Users,
-    },
-    {
-      title: "Empréstimos",
-      url: "loans", 
-      icon: Calculator,
-    },
-    {
-      title: "Parcelas",
-      url: "installments",
-      icon: Calendar,
-    },
-  ];
+const menuItems = [
+  {
+    title: "Dashboard",
+    url: "dashboard",
+    icon: Home,
+  },
+  {
+    title: "Clientes",
+    url: "clients",
+    icon: Users,
+  },
+  {
+    title: "Empréstimos",
+    url: "loans",
+    icon: DollarSign,
+  },
+  {
+    title: "Parcelas",
+    url: "installments",
+    icon: Calendar,
+  },
+];
 
-  const configMenuItems = [
-    {
-      title: "Configurações",
-      url: "settings",
-      icon: Settings,
-    },
-    {
-      title: "Planos",
-      url: "plans",
-      icon: Crown,
-    },
-  ];
+const settingsItems = [
+  {
+    title: "Configurações",
+    url: "settings",
+    icon: Settings,
+  },
+  {
+    title: "Planos",
+    url: "plans",
+    icon: Crown,
+  },
+];
 
+export function AppSidebar({ activeTab, onTabChange }: AppSidebarProps) {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center space-x-2 px-2 py-4">
+        <div className="flex items-center space-x-2 px-4 py-2">
           <DollarSign className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-bold">Veloz Cred</h1>
         </div>
@@ -77,19 +69,14 @@ const AppSidebar = ({ activeTab, onTabChange }: AppSidebarProps) => {
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainMenuItems.map((item) => (
+              {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild
+                  <SidebarMenuButton
                     isActive={activeTab === item.url}
+                    onClick={() => onTabChange(item.url)}
                   >
-                    <button 
-                      onClick={() => onTabChange(item.url)}
-                      className="flex items-center w-full"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </button>
+                    <item.icon />
+                    <span>{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -98,22 +85,17 @@ const AppSidebar = ({ activeTab, onTabChange }: AppSidebarProps) => {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Conta</SidebarGroupLabel>
+          <SidebarGroupLabel>Configurações</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {configMenuItems.map((item) => (
+              {settingsItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild
+                  <SidebarMenuButton
                     isActive={activeTab === item.url}
+                    onClick={() => onTabChange(item.url)}
                   >
-                    <button 
-                      onClick={() => onTabChange(item.url)}
-                      className="flex items-center w-full"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </button>
+                    <item.icon />
+                    <span>{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -123,17 +105,11 @@ const AppSidebar = ({ activeTab, onTabChange }: AppSidebarProps) => {
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton>
-              <User className="h-4 w-4" />
-              <span>Usuário</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex items-center space-x-2 px-4 py-2">
+          <User className="h-4 w-4" />
+          <span className="text-sm">Usuário Logado</span>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
-};
-
-export default AppSidebar;
+}

@@ -19,6 +19,12 @@ const LoanManagement = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingLoan, setEditingLoan] = useState<string | null>(null);
 
+  // Transform clients to match the expected format for LoanForm
+  const transformedClients = clients.map(client => ({
+    ...client,
+    fullName: client.name
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -40,7 +46,7 @@ const LoanManagement = () => {
 
       {isFormOpen && (
         <LoanForm
-          clients={clients}
+          clients={transformedClients}
           onSubmit={(formData) => {
             createLoan(formData);
             setIsFormOpen(false);
@@ -50,17 +56,19 @@ const LoanManagement = () => {
       )}
 
       <div className="grid gap-4">
-        {loans.map((loan) => (
-          <LoanCard
-            key={loan.id}
-            loan={loan}
-            editingLoan={editingLoan}
-            onEditRate={editLoanRate}
-            onStartEdit={setEditingLoan}
-            onCancelEdit={() => setEditingLoan(null)}
-            onDelete={deleteLoan}
-          />
-        ))}
+        {loans.map((loan) => {
+          return (
+            <LoanCard
+              key={loan.id}
+              loan={loan}
+              editingLoan={editingLoan}
+              onEditRate={editLoanRate}
+              onStartEdit={setEditingLoan}
+              onCancelEdit={() => setEditingLoan(null)}
+              onDelete={deleteLoan}
+            />
+          );
+        })}
       </div>
     </div>
   );

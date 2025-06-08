@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, Calendar, TrendingUp, Crown } from "lucide-react";
+import { Users, DollarSign, Calendar, TrendingUp } from "lucide-react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 import ClientManagement from "@/components/ClientManagement";
 import LoanManagement from "@/components/LoanManagement";
 import InstallmentTracking from "@/components/InstallmentTracking";
 import ClientCounter from "@/components/ClientCounter";
 import PlanSelector from "@/components/PlanSelector";
-import Settings from "@/components/Settings";
-import AppSidebar from "@/components/AppSidebar";
+import UserSettings from "@/components/UserSettings";
 import { usePlans } from "@/hooks/usePlans";
 import { useAppContext } from "@/contexts/AppContext";
 
@@ -34,6 +34,8 @@ const Index = () => {
         return <LoanManagement />;
       case "installments":
         return <InstallmentTracking />;
+      case "settings":
+        return <UserSettings />;
       case "plans":
         return (
           <PlanSelector
@@ -43,8 +45,6 @@ const Index = () => {
             onClose={() => setActiveTab("dashboard")}
           />
         );
-      case "settings":
-        return <Settings />;
       default:
         return (
           <div className="grid gap-6">
@@ -163,21 +163,13 @@ const Index = () => {
       <div className="min-h-screen flex w-full">
         <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <header className="flex h-16 shrink-0 items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
-            <div className="ml-auto flex items-center space-x-4">
+            <div className="ml-auto">
               <ClientCounter userPlan={userPlan} />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setActiveTab("plans")}
-              >
-                <Crown className="h-4 w-4 mr-2" />
-                Planos
-              </Button>
             </div>
           </header>
-          <main className="flex-1 space-y-4 p-8 pt-6">
+          <main className="flex-1 space-y-4 p-6">
             {renderActiveComponent()}
           </main>
         </SidebarInset>
