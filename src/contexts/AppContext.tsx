@@ -1,8 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Loan, Client, LoanFormData } from '@/types/loan';
 import { calculateLoanDetails } from '@/utils/loanCalculations';
 import { useToast } from '@/hooks/use-toast';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 interface Installment {
   id: string;
@@ -229,54 +230,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const generateReport = () => {
-    const reportData = clients.map(client => {
+    const doc = new jsPDF();
+    
+    // Título do relatório
+    doc.setFontSize(20);
+    doc.text('Relatório de Clientes e Empréstimos', 20, 20);
+    
+    // Data do relatório
+    doc.setFontSize(12);
+    doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, 35);
+    
+    // Preparar dados para a tabela
+    const tableData = clients.map(client => {
       const clientLoans = loans.filter(loan => loan.clientId === client.id);
-      const clientInstallments = installments.filter(inst => 
-        clientLoans.some(loan => loan.id === inst.loanId)
-      );
       
       return clientLoans.map(loan => {
-        const loanInstallments = clientInstallments.filter(inst => inst.loanId === loan.id);
+        const loanInstallments = installments.filter(inst => inst.loanId === loan.id);
         const paidInstallments = loanInstallments.filter(inst => inst.status === "paid").length;
         const remainingInstallments = loan.installments - paidInstallments;
 
-        return {
-          "Nome do Cliente": client.fullName,
-          "Valor do Empréstimo": `R$ ${loan.amount.toLocaleString()}`,
-          "Taxa de Juros": `${loan.interestRate}%`,
-          "Total de Parcelas": loan.installments,
-          "Parcelas Pagas": paidInstallments,
-          "Parcelas Restantes": remainingInstallments,
-          "Valor Total": `R$ ${loan.totalAmount.toLocaleString()}`,
-          "Data do Empréstimo": new Date(loan.loanDate).toLocaleDateString(),
-          "Status": loan.status === "active" ? "Ativo" : "Finalizado"
-        };
+        return [
+          client.fullName,
+          `R$ ${loan.amount.toLocaleString('pt-BR')}`,
+          `${loan.interestRate}%`,
+          loan.installments.toString(),
+          paidInstallments.toString(),
+          remainingInstallments.toString(),
+          `R$ ${loan.totalAmount.toLocaleString('pt-BR')}`,
+          new Date(loan.loanDate).toLocaleDateString('pt-BR'),
+          loan.status === "active" ? "Ativo" : "Finalizado"
+        ];
       });
     }).flat();
 
-    // Convert to CSV
-    const headers = Object.keys(reportData[0] || {});
-    const csvContent = [
-      headers.join(','),
-      ...reportData.map(row => 
-        headers.map(header => `"${row[header as keyof typeof row]}"`).join(',')
-      )
-    ].join('\n');
+    // Configurar a tabela
+    (doc as any).autoTable({
+      head: [[
+        'Nome do Cliente',
+        'Valor Empréstimo', 
+        'Taxa Juros',
+        'Total Parcelas',
+        'Parcelas Pagas',
+        'Parcelas Restantes',
+        'Valor Total',
+        'Data Empréstimo',
+        'Status'
+      ]],
+      body: tableData,
+      startY: 50,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [66, 139, 202] },
+      margin: { top: 50 }
+    });
 
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `relatorio-clientes-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Salvar o arquivo
+    doc.save(`relatorio-clientes-${new Date().toISOString().split('T')[0]}.pdf`);
 
     toast({
       title: "Relatório gerado",
-      description: "O arquivo CSV foi baixado com sucesso."
+      description: "O arquivo PDF foi baixado com sucesso."
     });
   };
 
