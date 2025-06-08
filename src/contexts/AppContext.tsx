@@ -20,7 +20,7 @@ interface AppContextType {
   createClient: (client: Omit<Client, 'id'>) => void;
   editClient: (id: string, client: Partial<Client>) => void;
   deleteClient: (id: string) => void;
-  createLoan: (loan: Omit<Loan, 'id' | 'startDate' | 'createdAt'>) => void;
+  createLoan: (loan: Omit<Loan, 'id'>) => void;
   editLoanRate: (id: string, rate: number) => void;
   deleteLoan: (id: string) => void;
   markInstallmentAsPaid: (id: string) => void;
@@ -54,7 +54,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     ));
   };
 
-  const createLoan = (loan: Omit<Loan, 'id' | 'startDate' | 'createdAt'>) => {
+  const createLoan = (loan: Omit<Loan, 'id'>) => {
     const newLoan: Loan = {
       ...loan,
       id: Math.random().toString(36).substring(2, 15),

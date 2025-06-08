@@ -51,9 +51,9 @@ const LoanManagement = () => {
             // Transform the form data to match the expected Loan interface
             const loanData = {
               clientId: formData.clientId,
-              amount: parseFloat(formData.amount),
-              interestRate: parseFloat(formData.interestRate),
-              installments: parseInt(formData.installments)
+              amount: formData.amount,
+              interestRate: formData.interestRate,
+              installments: formData.installments
             };
             createLoan(loanData);
             setIsFormOpen(false);
@@ -69,9 +69,9 @@ const LoanManagement = () => {
           const transformedLoan = {
             ...loan,
             clientName: client?.name || 'Cliente não encontrado',
-            totalAmount: loan.amount * (1 + loan.interestRate / 100),
-            monthlyPayment: (loan.amount * (1 + loan.interestRate / 100)) / loan.installments,
-            loanDate: loan.createdAt.toISOString(),
+            totalAmount: loan.amount,
+            monthlyPayment: loan.amount / loan.installments,
+            loanDate: loan.createdAt,
             status: 'active' as const
           };
 
