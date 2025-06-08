@@ -8,20 +8,16 @@ import InstallmentTracking from "@/components/InstallmentTracking";
 import ClientCounter from "@/components/ClientCounter";
 import PlanSelector from "@/components/PlanSelector";
 import { usePlans } from "@/hooks/usePlans";
+import { useLoanManagement } from "@/hooks/useLoanManagement";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const { plans, userPlan, changePlan } = usePlans();
+  const { calculateStats } = useLoanManagement();
 
-  // Mock data for demonstration
-  const stats = {
-    totalLoaned: 25000,
-    totalReceived: 12500,
-    activeClients: 8,
-    activeLoans: 5,
-    overduePayments: 2
-  };
+  // Get real-time stats from loan management
+  const stats = calculateStats();
 
   const handlePlanChange = (planId: string) => {
     changePlan(planId);
@@ -73,7 +69,7 @@ const Index = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Total Recebido
+                    Total em Juros
                   </CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -85,12 +81,12 @@ const Index = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Clientes Ativos
+                    Empréstimos Ativos
                   </CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.activeClients}</div>
+                  <div className="text-2xl font-bold">{stats.activeLoans}</div>
                 </CardContent>
               </Card>
 

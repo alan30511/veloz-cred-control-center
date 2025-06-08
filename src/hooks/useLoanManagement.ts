@@ -45,6 +45,23 @@ export const useLoanManagement = () => {
     { id: "4", fullName: "Carlos Lima" }
   ];
 
+  // Calculate dashboard stats
+  const calculateStats = () => {
+    const activeLoans = loans.filter(loan => loan.status === "active");
+    const totalLoaned = activeLoans.reduce((sum, loan) => sum + loan.amount, 0);
+    const totalReceived = activeLoans.reduce((sum, loan) => sum + (loan.totalAmount - loan.amount), 0);
+    const activeClients = new Set(activeLoans.map(loan => loan.clientId)).size;
+    const overduePayments = 2; // Mock data for now
+    
+    return {
+      totalLoaned,
+      totalReceived,
+      activeClients,
+      activeLoans: activeLoans.length,
+      overduePayments
+    };
+  };
+
   const createLoan = (formData: LoanFormData) => {
     const amount = parseFloat(formData.amount);
     const interestRate = parseFloat(formData.interestRate);
@@ -100,6 +117,19 @@ export const useLoanManagement = () => {
     setEditingLoan(null);
   };
 
+  const deleteLoan = (loanId: string) => {
+    const loan = loans.find(l => l.id === loanId);
+    if (!loan) return;
+
+    setLoans(prev => prev.filter(l => l.id !== loanId));
+    
+    toast({
+      title: "Empréstimo excluído",
+      description: `Empréstimo de ${loan.clientName} foi removido`,
+      variant: "destructive"
+    });
+  };
+
   return {
     loans,
     clients,
@@ -108,6 +138,8 @@ export const useLoanManagement = () => {
     editingLoan,
     setEditingLoan,
     createLoan,
-    editLoanRate
+    editLoanRate,
+    deleteLoan,
+    calculateStats
   };
 };

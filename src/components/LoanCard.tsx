@@ -2,8 +2,19 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DollarSign, Calendar, Edit } from "lucide-react";
+import { DollarSign, Calendar, Edit, Trash2 } from "lucide-react";
 import { Loan } from "@/types/loan";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface LoanCardProps {
   loan: Loan;
@@ -11,9 +22,10 @@ interface LoanCardProps {
   onEditRate: (loanId: string, newRate: number) => void;
   onStartEdit: (loanId: string) => void;
   onCancelEdit: () => void;
+  onDelete: (loanId: string) => void;
 }
 
-const LoanCard = ({ loan, editingLoan, onEditRate, onStartEdit, onCancelEdit }: LoanCardProps) => {
+const LoanCard = ({ loan, editingLoan, onEditRate, onStartEdit, onCancelEdit, onDelete }: LoanCardProps) => {
   return (
     <Card>
       <CardContent className="p-6">
@@ -95,6 +107,34 @@ const LoanCard = ({ loan, editingLoan, onEditRate, onStartEdit, onCancelEdit }: 
                 )}
               </div>
             </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir Empréstimo</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir o empréstimo de {loan.clientName}? 
+                    Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => onDelete(loan.id)}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </CardContent>

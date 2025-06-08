@@ -14,7 +14,8 @@ const LoanManagement = () => {
     editingLoan,
     setEditingLoan,
     createLoan,
-    editLoanRate
+    editLoanRate,
+    deleteLoan
   } = useLoanManagement();
 
   return (
@@ -47,6 +48,7 @@ const LoanManagement = () => {
             onEditRate={editLoanRate}
             onStartEdit={setEditingLoan}
             onCancelEdit={() => setEditingLoan(null)}
+            onDelete={deleteLoan}
           />
         ))}
       </div>
