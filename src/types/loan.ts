@@ -10,6 +10,8 @@ export interface Loan {
   monthlyPayment: number;
   loanDate: string;
   status: "active" | "completed";
+  createdAt: Date;
+  startDate: Date;
 }
 
 export interface Client {

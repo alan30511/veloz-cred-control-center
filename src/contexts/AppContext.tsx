@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Client } from '@/types/client';
 import { Loan } from '@/types/loan';
@@ -20,7 +19,7 @@ interface AppContextType {
   createClient: (client: Omit<Client, 'id'>) => void;
   editClient: (id: string, client: Partial<Client>) => void;
   deleteClient: (id: string) => void;
-  createLoan: (loan: Omit<Loan, 'id'>) => void;
+  createLoan: (loanData: { clientId: string; amount: string; interestRate: string; installments: string }) => void;
   editLoanRate: (id: string, rate: number) => void;
   deleteLoan: (id: string) => void;
   markInstallmentAsPaid: (id: string) => void;
@@ -54,19 +53,34 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     ));
   };
 
-  const createLoan = (loan: Omit<Loan, 'id'>) => {
+  const createLoan = (loanData: { clientId: string; amount: string; interestRate: string; installments: string }) => {
+    const client = clients.find(c => c.id === loanData.clientId);
+    const amount = parseFloat(loanData.amount);
+    const interestRate = parseFloat(loanData.interestRate);
+    const installmentCount = parseInt(loanData.installments);
+    
+    const totalAmount = amount + (amount * interestRate / 100);
+    const monthlyPayment = totalAmount / installmentCount;
+    
     const newLoan: Loan = {
-      ...loan,
       id: Math.random().toString(36).substring(2, 15),
-      startDate: new Date(),
-      createdAt: new Date()
+      clientId: loanData.clientId,
+      clientName: client?.name || 'Cliente não encontrado',
+      amount,
+      interestRate,
+      installments: installmentCount,
+      totalAmount,
+      monthlyPayment,
+      loanDate: new Date().toISOString(),
+      status: 'active',
+      createdAt: new Date(),
+      startDate: new Date()
     };
 
     // Generate installments
-    const installmentAmount = loan.amount / loan.installments;
-    const client = clients.find(c => c.id === loan.clientId);
+    const installmentAmount = monthlyPayment;
     
-    const newInstallments: Installment[] = Array.from({ length: loan.installments }, (_, i) => {
+    const newInstallments: Installment[] = Array.from({ length: installmentCount }, (_, i) => {
       const dueDate = new Date(newLoan.createdAt);
       dueDate.setMonth(dueDate.getMonth() + i + 1);
 
@@ -74,12 +88,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         id: Math.random().toString(36).substring(2, 15),
         loanId: newLoan.id,
         dueDate,
-        amount: installmentAmount + (loan.amount * loan.interestRate / 100 / loan.installments),
+        amount: installmentAmount,
         paid: false,
         status: 'pending',
         clientName: client?.name,
         installmentNumber: i + 1,
-        totalInstallments: loan.installments,
+        totalInstallments: installmentCount,
         clientWhatsapp: client?.phone
       };
 
