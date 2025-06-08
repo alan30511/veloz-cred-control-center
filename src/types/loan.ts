@@ -2,14 +2,11 @@
 export interface Loan {
   id: string;
   clientId: string;
-  clientName: string;
   amount: number;
   interestRate: number;
   installments: number;
-  totalAmount: number;
-  monthlyPayment: number;
-  loanDate: string;
-  status: "active" | "completed";
+  startDate: Date;
+  createdAt: Date;
 }
 
 export interface Client {
