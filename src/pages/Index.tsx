@@ -1,14 +1,18 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, Calendar, TrendingUp, Plus } from "lucide-react";
+import { Users, DollarSign, Calendar, TrendingUp, Plus, Crown } from "lucide-react";
 import ClientManagement from "@/components/ClientManagement";
 import LoanManagement from "@/components/LoanManagement";
 import InstallmentTracking from "@/components/InstallmentTracking";
+import ClientCounter from "@/components/ClientCounter";
+import PlanSelector from "@/components/PlanSelector";
+import { usePlans } from "@/hooks/usePlans";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [showPlanSelector, setShowPlanSelector] = useState(false);
+  const { plans, userPlan, changePlan } = usePlans();
 
   // Mock data for demonstration
   const stats = {
@@ -19,17 +23,40 @@ const Index = () => {
     overduePayments: 2
   };
 
+  const handlePlanChange = (planId: string) => {
+    changePlan(planId);
+    setShowPlanSelector(false);
+  };
+
   const renderActiveComponent = () => {
     switch (activeTab) {
       case "clients":
-        return <ClientManagement />;
+        return <ClientManagement userPlan={userPlan} />;
       case "loans":
         return <LoanManagement />;
       case "installments":
         return <InstallmentTracking />;
+      case "plans":
+        return (
+          <PlanSelector
+            plans={plans}
+            currentPlanId={userPlan.currentPlan.id}
+            onSelectPlan={handlePlanChange}
+            onClose={() => setActiveTab("dashboard")}
+          />
+        );
       default:
         return (
           <div className="grid gap-6">
+            {showPlanSelector && (
+              <PlanSelector
+                plans={plans}
+                currentPlanId={userPlan.currentPlan.id}
+                onSelectPlan={handlePlanChange}
+                onClose={() => setShowPlanSelector(false)}
+              />
+            )}
+            
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -174,6 +201,18 @@ const Index = () => {
               Parcelas
             </Button>
           </nav>
+          
+          <div className="ml-auto flex items-center space-x-4">
+            <ClientCounter userPlan={userPlan} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPlanSelector(true)}
+            >
+              <Crown className="h-4 w-4 mr-2" />
+              Planos
+            </Button>
+          </div>
         </div>
       </div>
 

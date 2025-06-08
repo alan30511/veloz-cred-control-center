@@ -1,11 +1,13 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Edit, Trash2, Phone, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { UserPlan } from "@/types/plan";
+import { usePlans } from "@/hooks/usePlans";
 
 interface Client {
   id: string;
@@ -16,7 +18,11 @@ interface Client {
   address: string;
 }
 
-const ClientManagement = () => {
+interface ClientManagementProps {
+  userPlan: UserPlan;
+}
+
+const ClientManagement = ({ userPlan }: ClientManagementProps) => {
   const [clients, setClients] = useState<Client[]>([
     {
       id: "1",
@@ -47,6 +53,13 @@ const ClientManagement = () => {
   });
 
   const { toast } = useToast();
+  const { incrementClientCount, decrementClientCount, canAddClient } = usePlans();
+
+  // Update client count when clients change
+  useEffect(() => {
+    // This would normally sync with the actual client count from the plans hook
+    console.log(`Current client count: ${clients.length}`);
+  }, [clients.length]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,11 +75,22 @@ const ClientManagement = () => {
         description: "Os dados do cliente foram atualizados com sucesso."
       });
     } else {
+      // Check if can add new client
+      if (!canAddClient()) {
+        toast({
+          title: "Limite atingido",
+          description: `Você atingiu o limite de ${userPlan.currentPlan.maxClients} clientes do plano ${userPlan.currentPlan.name}. Faça upgrade para adicionar mais clientes.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
       const newClient: Client = {
         id: Date.now().toString(),
         ...formData
       };
       setClients(prev => [...prev, newClient]);
+      incrementClientCount();
       toast({
         title: "Cliente adicionado",
         description: "Novo cliente foi cadastrado com sucesso."
@@ -98,6 +122,7 @@ const ClientManagement = () => {
 
   const handleDelete = (id: string) => {
     setClients(prev => prev.filter(client => client.id !== id));
+    decrementClientCount();
     toast({
       title: "Cliente removido",
       description: "O cliente foi removido com sucesso."
@@ -109,6 +134,18 @@ const ClientManagement = () => {
     window.open(`https://wa.me/55${cleanNumber}`, '_blank');
   };
 
+  const handleNewClient = () => {
+    if (!canAddClient()) {
+      toast({
+        title: "Limite atingido",
+        description: `Você atingiu o limite de ${userPlan.currentPlan.maxClients} clientes do plano ${userPlan.currentPlan.name}. Faça upgrade para adicionar mais clientes.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    setIsFormOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -116,7 +153,7 @@ const ClientManagement = () => {
           <h2 className="text-2xl font-bold">Gerenciamento de Clientes</h2>
           <p className="text-muted-foreground">Cadastre e gerencie seus clientes</p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
+        <Button onClick={handleNewClient}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Cliente
         </Button>
