@@ -19,6 +19,12 @@ const LoanManagement = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingLoan, setEditingLoan] = useState<string | null>(null);
 
+  // Transform clients to match the expected format for LoanForm
+  const transformedClients = clients.map(client => ({
+    ...client,
+    fullName: client.name
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -40,9 +46,16 @@ const LoanManagement = () => {
 
       {isFormOpen && (
         <LoanForm
-          clients={clients}
+          clients={transformedClients}
           onSubmit={(formData) => {
-            createLoan(formData);
+            // Transform the form data to match the expected Loan interface
+            const loanData = {
+              clientId: formData.clientId,
+              amount: formData.amount,
+              interestRate: formData.interestRate,
+              installments: formData.installments
+            };
+            createLoan(loanData);
             setIsFormOpen(false);
           }}
           onCancel={() => setIsFormOpen(false)}
@@ -50,17 +63,30 @@ const LoanManagement = () => {
       )}
 
       <div className="grid gap-4">
-        {loans.map((loan) => (
-          <LoanCard
-            key={loan.id}
-            loan={loan}
-            editingLoan={editingLoan}
-            onEditRate={editLoanRate}
-            onStartEdit={setEditingLoan}
-            onCancelEdit={() => setEditingLoan(null)}
-            onDelete={deleteLoan}
-          />
-        ))}
+        {loans.map((loan) => {
+          const client = clients.find(c => c.id === loan.clientId);
+          // Transform loan to match expected format for LoanCard
+          const transformedLoan = {
+            ...loan,
+            clientName: client?.name || 'Cliente não encontrado',
+            totalAmount: loan.amount,
+            monthlyPayment: loan.amount / loan.installments,
+            loanDate: loan.createdAt,
+            status: 'active' as const
+          };
+
+          return (
+            <LoanCard
+              key={loan.id}
+              loan={transformedLoan}
+              editingLoan={editingLoan}
+              onEditRate={editLoanRate}
+              onStartEdit={setEditingLoan}
+              onCancelEdit={() => setEditingLoan(null)}
+              onDelete={deleteLoan}
+            />
+          );
+        })}
       </div>
     </div>
   );

@@ -1,35 +1,10 @@
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Client } from '@/types/client';
 import { Loan } from '@/types/loan';
 import { Installment } from '@/types/installment';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-}
-
-interface Loan {
-  id: string;
-  clientId: string;
-  amount: number;
-  interestRate: number;
-  installments: number;
-  startDate: Date;
-  createdAt: Date;
-}
-
-interface Installment {
-  id: string;
-  loanId: string;
-  dueDate: Date;
-  amount: number;
-  paid: boolean;
-}
 
 interface Stats {
   totalLoaned: number;
@@ -72,8 +47,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const deleteClient = (id: string) => {
     setClients(clients.filter(c => c.id !== id));
     // Also delete loans and installments related to this client
+    const clientLoans = loans.filter(loan => loan.clientId === id);
     setLoans(loans.filter(loan => loan.clientId !== id));
-    setInstallments(installments.filter(installment => !loans.find(loan => loan.clientId === id && loan.id === installment.loanId)));
+    setInstallments(installments.filter(installment => 
+      !clientLoans.some(loan => loan.id === installment.loanId)
+    ));
   };
 
   const createLoan = (loan: Omit<Loan, 'id'>) => {
@@ -86,17 +64,26 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     // Generate installments
     const installmentAmount = loan.amount / loan.installments;
+    const client = clients.find(c => c.id === loan.clientId);
+    
     const newInstallments: Installment[] = Array.from({ length: loan.installments }, (_, i) => {
       const dueDate = new Date(newLoan.createdAt);
-      dueDate.setMonth(dueDate.getMonth() + i + 1); // One installment per month
+      dueDate.setMonth(dueDate.getMonth() + i + 1);
 
-      return {
+      const installment: Installment = {
         id: Math.random().toString(36).substring(2, 15),
         loanId: newLoan.id,
         dueDate,
         amount: installmentAmount + (loan.amount * loan.interestRate / 100 / loan.installments),
-        paid: false
+        paid: false,
+        status: 'pending',
+        clientName: client?.name,
+        installmentNumber: i + 1,
+        totalInstallments: loan.installments,
+        clientWhatsapp: client?.phone
       };
+
+      return installment;
     });
 
     setLoans([...loans, newLoan]);
@@ -113,7 +100,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const markInstallmentAsPaid = (id: string) => {
-    setInstallments(installments.map(installment => installment.id === id ? { ...installment, paid: true } : installment));
+    setInstallments(installments.map(installment => 
+      installment.id === id ? { 
+        ...installment, 
+        paid: true, 
+        status: 'paid' as const,
+        paidDate: new Date()
+      } : installment
+    ));
   };
 
   const calculateStats = (): Stats => {
@@ -122,7 +116,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       .filter(installment => installment.paid)
       .reduce((sum, installment) => sum + installment.amount, 0);
     const activeLoans = loans.length;
-    const overduePayments = installments.filter(installment => !installment.paid && installment.dueDate < new Date()).length;
+    const overduePayments = installments.filter(installment => 
+      !installment.paid && installment.dueDate < new Date()
+    ).length;
 
     return {
       totalLoaned,
@@ -146,9 +142,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     // Preparar dados para a tabela
     const tableData = clients.map(client => {
       const clientLoans = loans.filter(loan => loan.clientId === client.id);
-      const clientInstallments = installments.filter(installment => 
-        clientLoans.some(loan => loan.id === installment.loanId)
-      );
       
       return clientLoans.map(loan => {
         const loanInstallments = installments.filter(inst => inst.loanId === loan.id);

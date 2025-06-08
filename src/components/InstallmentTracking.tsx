@@ -8,9 +8,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 
 const InstallmentTracking = () => {
-  const { installments, markInstallmentAsPaid } = useAppContext();
+  const { installments, markInstallmentAsPaid, clients, loans } = useAppContext();
   const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("all");
   const { toast } = useToast();
+
+  const getInstallmentStatus = (installment: any) => {
+    if (installment.paid) return 'paid';
+    if (installment.dueDate < new Date()) return 'overdue';
+    return 'pending';
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -35,10 +41,15 @@ const InstallmentTracking = () => {
   };
 
   const sendWhatsAppReminder = (installment: any) => {
-    const cleanNumber = installment.clientWhatsapp.replace(/\D/g, '');
+    const loan = loans.find(l => l.id === installment.loanId);
+    const client = clients.find(c => c.id === loan?.clientId);
+    
+    if (!client) return;
+    
+    const cleanNumber = client.phone.replace(/\D/g, '');
     const message = encodeURIComponent(
-      `Olá ${installment.clientName}! 📅\n\n` +
-      `Lembrete: Sua parcela ${installment.installmentNumber}/${installment.totalInstallments} ` +
+      `Olá ${client.name}! 📅\n\n` +
+      `Lembrete: Sua parcela ${installment.installmentNumber || 1}/${installment.totalInstallments || 1} ` +
       `no valor de R$ ${installment.amount.toLocaleString()} ` +
       `vence em ${new Date(installment.dueDate).toLocaleDateString()}.\n\n` +
       `Por favor, entre em contato para confirmar o pagamento.\n\n` +
@@ -53,7 +64,7 @@ const InstallmentTracking = () => {
     });
   };
 
-  const getDaysDifference = (dueDate: string) => {
+  const getDaysDifference = (dueDate: Date) => {
     const today = new Date();
     const due = new Date(dueDate);
     const diffTime = due.getTime() - today.getTime();
@@ -61,18 +72,33 @@ const InstallmentTracking = () => {
     return diffDays;
   };
 
-  const filteredInstallments = installments.filter(installment => {
+  const enrichedInstallments = installments.map(installment => {
+    const loan = loans.find(l => l.id === installment.loanId);
+    const client = clients.find(c => c.id === loan?.clientId);
+    const status = getInstallmentStatus(installment);
+    
+    return {
+      ...installment,
+      status,
+      clientName: client?.name,
+      clientWhatsapp: client?.phone,
+      installmentNumber: installment.installmentNumber || 1,
+      totalInstallments: installment.totalInstallments || loan?.installments || 1
+    };
+  });
+
+  const filteredInstallments = enrichedInstallments.filter(installment => {
     if (filter === "all") return true;
     return installment.status === filter;
   });
 
   const stats = {
-    total: installments.length,
-    paid: installments.filter(i => i.status === "paid").length,
-    pending: installments.filter(i => i.status === "pending").length,
-    overdue: installments.filter(i => i.status === "overdue").length,
-    totalAmount: installments.reduce((sum, i) => sum + i.amount, 0),
-    paidAmount: installments.filter(i => i.status === "paid").reduce((sum, i) => sum + i.amount, 0)
+    total: enrichedInstallments.length,
+    paid: enrichedInstallments.filter(i => i.status === "paid").length,
+    pending: enrichedInstallments.filter(i => i.status === "pending").length,
+    overdue: enrichedInstallments.filter(i => i.status === "overdue").length,
+    totalAmount: enrichedInstallments.reduce((sum, i) => sum + i.amount, 0),
+    paidAmount: enrichedInstallments.filter(i => i.status === "paid").reduce((sum, i) => sum + i.amount, 0)
   };
 
   return (
