@@ -5,70 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, CheckCircle, Clock, AlertCircle, MessageSquare, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Installment {
-  id: string;
-  loanId: string;
-  clientName: string;
-  clientWhatsapp: string;
-  installmentNumber: number;
-  totalInstallments: number;
-  amount: number;
-  dueDate: string;
-  status: "pending" | "paid" | "overdue";
-  paidDate?: string;
-}
+import { useAppContext } from "@/contexts/AppContext";
 
 const InstallmentTracking = () => {
-  const [installments, setInstallments] = useState<Installment[]>([
-    {
-      id: "1",
-      loanId: "1",
-      clientName: "João Silva",
-      clientWhatsapp: "(11) 99999-9999",
-      installmentNumber: 1,
-      totalInstallments: 10,
-      amount: 600,
-      dueDate: "2024-02-15",
-      status: "paid",
-      paidDate: "2024-02-14"
-    },
-    {
-      id: "2",
-      loanId: "1", 
-      clientName: "João Silva",
-      clientWhatsapp: "(11) 99999-9999",
-      installmentNumber: 2,
-      totalInstallments: 10,
-      amount: 600,
-      dueDate: "2024-03-15",
-      status: "overdue"
-    },
-    {
-      id: "3",
-      loanId: "2",
-      clientName: "Maria Santos",
-      clientWhatsapp: "(11) 88888-8888",
-      installmentNumber: 1,
-      totalInstallments: 6,
-      amount: 600,
-      dueDate: "2024-03-01",
-      status: "paid",
-      paidDate: "2024-02-28"
-    },
-    {
-      id: "4",
-      loanId: "2",
-      clientName: "Maria Santos", 
-      clientWhatsapp: "(11) 88888-8888",
-      installmentNumber: 2,
-      totalInstallments: 6,
-      amount: 600,
-      dueDate: "2024-04-01",
-      status: "pending"
-    }
-  ]);
-
+  const { installments, markInstallmentAsPaid } = useAppContext();
   const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("all");
   const { toast } = useToast();
 
@@ -94,20 +34,7 @@ const InstallmentTracking = () => {
     }
   };
 
-  const markAsPaid = (id: string) => {
-    setInstallments(prev => prev.map(installment => 
-      installment.id === id 
-        ? { ...installment, status: "paid" as const, paidDate: new Date().toISOString().split('T')[0] }
-        : installment
-    ));
-    
-    toast({
-      title: "Parcela marcada como paga",
-      description: "A parcela foi atualizada com sucesso."
-    });
-  };
-
-  const sendWhatsAppReminder = (installment: Installment) => {
+  const sendWhatsAppReminder = (installment: any) => {
     const cleanNumber = installment.clientWhatsapp.replace(/\D/g, '');
     const message = encodeURIComponent(
       `Olá ${installment.clientName}! 📅\n\n` +
@@ -308,7 +235,7 @@ const InstallmentTracking = () => {
                     {installment.status !== "paid" && (
                       <Button 
                         size="sm"
-                        onClick={() => markAsPaid(installment.id)}
+                        onClick={() => markInstallmentAsPaid(installment.id)}
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
                         Marcar como Pago

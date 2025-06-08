@@ -1,22 +1,23 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, Calendar, TrendingUp, Plus, Crown } from "lucide-react";
+import { Users, DollarSign, Calendar, TrendingUp, Crown } from "lucide-react";
 import ClientManagement from "@/components/ClientManagement";
 import LoanManagement from "@/components/LoanManagement";
 import InstallmentTracking from "@/components/InstallmentTracking";
 import ClientCounter from "@/components/ClientCounter";
 import PlanSelector from "@/components/PlanSelector";
 import { usePlans } from "@/hooks/usePlans";
-import { useLoanManagement } from "@/hooks/useLoanManagement";
+import { useAppContext } from "@/contexts/AppContext";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const { plans, userPlan, changePlan } = usePlans();
-  const { calculateStats } = useLoanManagement();
+  const { calculateStats } = useAppContext();
 
-  // Get real-time stats from loan management
+  // Get real-time stats from app context
   const stats = calculateStats();
 
   const handlePlanChange = (planId: string) => {
