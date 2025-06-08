@@ -1,20 +1,19 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, Calendar, TrendingUp } from "lucide-react";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import { Users, DollarSign, Calendar, TrendingUp, Crown } from "lucide-react";
 import ClientManagement from "@/components/ClientManagement";
 import LoanManagement from "@/components/LoanManagement";
 import InstallmentTracking from "@/components/InstallmentTracking";
 import ClientCounter from "@/components/ClientCounter";
 import PlanSelector from "@/components/PlanSelector";
-import UserSettings from "@/components/UserSettings";
 import { usePlans } from "@/hooks/usePlans";
 import { useAppContext } from "@/contexts/AppContext";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [showPlanSelector, setShowPlanSelector] = useState(false);
   const { plans, userPlan, changePlan } = usePlans();
   const { calculateStats } = useAppContext();
 
@@ -23,7 +22,7 @@ const Index = () => {
 
   const handlePlanChange = (planId: string) => {
     changePlan(planId);
-    setActiveTab("dashboard");
+    setShowPlanSelector(false);
   };
 
   const renderActiveComponent = () => {
@@ -34,8 +33,6 @@ const Index = () => {
         return <LoanManagement />;
       case "installments":
         return <InstallmentTracking />;
-      case "settings":
-        return <UserSettings />;
       case "plans":
         return (
           <PlanSelector
@@ -48,6 +45,15 @@ const Index = () => {
       default:
         return (
           <div className="grid gap-6">
+            {showPlanSelector && (
+              <PlanSelector
+                plans={plans}
+                currentPlanId={userPlan.currentPlan.id}
+                onSelectPlan={handlePlanChange}
+                onClose={() => setShowPlanSelector(false)}
+              />
+            )}
+            
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -159,22 +165,58 @@ const Index = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <div className="ml-auto">
-              <ClientCounter userPlan={userPlan} />
-            </div>
-          </header>
-          <main className="flex-1 space-y-4 p-6">
-            {renderActiveComponent()}
-          </main>
-        </SidebarInset>
+    <div className="min-h-screen bg-background">
+      <div className="border-b">
+        <div className="flex h-16 items-center px-4">
+          <div className="flex items-center space-x-2">
+            <DollarSign className="h-6 w-6 text-primary" />
+            <h1 className="text-xl font-bold">Veloz Cred</h1>
+          </div>
+          <nav className="flex items-center space-x-4 lg:space-x-6 ml-6">
+            <Button
+              variant={activeTab === "dashboard" ? "default" : "ghost"}
+              onClick={() => setActiveTab("dashboard")}
+            >
+              Dashboard
+            </Button>
+            <Button
+              variant={activeTab === "clients" ? "default" : "ghost"}
+              onClick={() => setActiveTab("clients")}
+            >
+              Clientes
+            </Button>
+            <Button
+              variant={activeTab === "loans" ? "default" : "ghost"}
+              onClick={() => setActiveTab("loans")}
+            >
+              Empréstimos
+            </Button>
+            <Button
+              variant={activeTab === "installments" ? "default" : "ghost"}
+              onClick={() => setActiveTab("installments")}
+            >
+              Parcelas
+            </Button>
+          </nav>
+          
+          <div className="ml-auto flex items-center space-x-4">
+            <ClientCounter userPlan={userPlan} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPlanSelector(true)}
+            >
+              <Crown className="h-4 w-4 mr-2" />
+              Planos
+            </Button>
+          </div>
+        </div>
       </div>
-    </SidebarProvider>
+
+      <main className="flex-1 space-y-4 p-8 pt-6">
+        {renderActiveComponent()}
+      </main>
+    </div>
   );
 };
 
