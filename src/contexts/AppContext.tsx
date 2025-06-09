@@ -3,6 +3,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Loan, Client, LoanFormData } from '@/types/loan';
 import { calculateLoanDetails } from '@/utils/loanCalculations';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Installment {
   id: string;
@@ -21,12 +23,13 @@ interface AppContextType {
   loans: Loan[];
   clients: Client[];
   installments: Installment[];
-  createLoan: (formData: LoanFormData) => void;
-  editLoanRate: (loanId: string, newRate: number) => void;
-  deleteLoan: (loanId: string) => void;
-  addClient: (client: Omit<Client, 'id'>) => void;
-  editClient: (id: string, client: Omit<Client, 'id'>) => void;
-  deleteClient: (id: string) => void;
+  loading: boolean;
+  createLoan: (formData: LoanFormData) => Promise<void>;
+  editLoanRate: (loanId: string, newRate: number) => Promise<void>;
+  deleteLoan: (loanId: string) => Promise<void>;
+  addClient: (client: Omit<Client, 'id'>) => Promise<void>;
+  editClient: (id: string, client: Omit<Client, 'id'>) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
   markInstallmentAsPaid: (id: string) => void;
   calculateStats: () => any;
   generateReport: () => void;
@@ -44,76 +47,105 @@ export const useAppContext = () => {
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
-
-  const [clients, setClients] = useState<Client[]>([
-    { id: "1", fullName: "João Silva" },
-    { id: "2", fullName: "Maria Santos" },
-    { id: "3", fullName: "Ana Costa" },
-    { id: "4", fullName: "Carlos Lima" }
-  ]);
-
-  const [loans, setLoans] = useState<Loan[]>([
-    {
-      id: "1",
-      clientId: "1",
-      clientName: "João Silva",
-      amount: 5000,
-      interestRate: 20,
-      installments: 10,
-      totalAmount: 6000,
-      monthlyPayment: 600,
-      loanDate: "2024-01-15",
-      status: "active"
-    },
-    {
-      id: "2",
-      clientId: "2", 
-      clientName: "Maria Santos",
-      amount: 3000,
-      interestRate: 20,
-      installments: 6,
-      totalAmount: 3600,
-      monthlyPayment: 600,
-      loanDate: "2024-02-01",
-      status: "active"
-    }
-  ]);
-
+  const { user } = useAuth();
+  
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
   const [installments, setInstallments] = useState<Installment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load data from Supabase
+  useEffect(() => {
+    if (user) {
+      loadClients();
+      loadLoans();
+    }
+  }, [user]);
 
   // Generate installments when loans change
   useEffect(() => {
-    const generateInstallments = () => {
-      const newInstallments: Installment[] = [];
-      
-      loans.forEach(loan => {
-        const client = clients.find(c => c.id === loan.clientId);
-        if (!client) return;
-
-        for (let i = 1; i <= loan.installments; i++) {
-          const dueDate = new Date(loan.loanDate);
-          dueDate.setMonth(dueDate.getMonth() + i);
-          
-          newInstallments.push({
-            id: `${loan.id}-${i}`,
-            loanId: loan.id,
-            clientName: loan.clientName,
-            clientWhatsapp: "(11) 99999-9999", // Mock data
-            installmentNumber: i,
-            totalInstallments: loan.installments,
-            amount: loan.monthlyPayment,
-            dueDate: dueDate.toISOString().split('T')[0],
-            status: i <= 1 ? "paid" : i === 2 ? "overdue" : "pending",
-            paidDate: i <= 1 ? new Date().toISOString().split('T')[0] : undefined
-          });
-        }
-      });
-      
-      setInstallments(newInstallments);
-    };
-
     generateInstallments();
   }, [loans, clients]);
+
+  const loadClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      setClients(data || []);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar clientes",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadLoans = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('loans')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      const formattedLoans = data?.map(loan => ({
+        ...loan,
+        amount: Number(loan.amount),
+        interestRate: Number(loan.interest_rate),
+        totalAmount: Number(loan.total_amount),
+        monthlyPayment: Number(loan.monthly_payment),
+        loanDate: loan.loan_date
+      })) || [];
+      
+      setLoans(formattedLoans);
+    } catch (error) {
+      console.error('Error loading loans:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar empréstimos",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const generateInstallments = () => {
+    const newInstallments: Installment[] = [];
+    
+    loans.forEach(loan => {
+      const client = clients.find(c => c.id === loan.clientId);
+      if (!client) return;
+
+      for (let i = 1; i <= loan.installments; i++) {
+        const dueDate = new Date(loan.loanDate);
+        dueDate.setMonth(dueDate.getMonth() + i);
+        
+        newInstallments.push({
+          id: `${loan.id}-${i}`,
+          loanId: loan.id,
+          clientName: loan.clientName,
+          clientWhatsapp: "(11) 99999-9999", // Mock data
+          installmentNumber: i,
+          totalInstallments: loan.installments,
+          amount: loan.monthlyPayment,
+          dueDate: dueDate.toISOString().split('T')[0],
+          status: i <= 1 ? "paid" : i === 2 ? "overdue" : "pending",
+          paidDate: i <= 1 ? new Date().toISOString().split('T')[0] : undefined
+        });
+      }
+    });
+    
+    setInstallments(newInstallments);
+  };
 
   const calculateStats = () => {
     const activeLoans = loans.filter(loan => loan.status === "active");
@@ -131,88 +163,199 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  const createLoan = (formData: LoanFormData) => {
-    const amount = parseFloat(formData.amount);
-    const interestRate = parseFloat(formData.interestRate);
-    const installmentsCount = parseInt(formData.installments);
-    
-    const client = clients.find(c => c.id === formData.clientId);
-    if (!client) return;
+  const createLoan = async (formData: LoanFormData) => {
+    if (!user) return;
 
-    const { totalAmount, monthlyPayment } = calculateLoanDetails(amount, interestRate, installmentsCount);
+    try {
+      const amount = parseFloat(formData.amount);
+      const interestRate = parseFloat(formData.interestRate);
+      const installmentsCount = parseInt(formData.installments);
+      
+      const client = clients.find(c => c.id === formData.clientId);
+      if (!client) return;
 
-    const newLoan: Loan = {
-      id: Date.now().toString(),
-      clientId: formData.clientId,
-      clientName: client.fullName,
-      amount,
-      interestRate,
-      installments: installmentsCount,
-      totalAmount,
-      monthlyPayment,
-      loanDate: new Date().toISOString().split('T')[0],
-      status: "active"
-    };
+      const { totalAmount, monthlyPayment } = calculateLoanDetails(amount, interestRate, installmentsCount);
 
-    setLoans(prev => [...prev, newLoan]);
-    
-    toast({
-      title: "Empréstimo criado",
-      description: `Empréstimo de R$ ${amount.toLocaleString()} criado para ${client.fullName}`
-    });
+      const { error } = await supabase
+        .from('loans')
+        .insert({
+          user_id: user.id,
+          client_id: formData.clientId,
+          client_name: client.fullName,
+          amount,
+          interest_rate: interestRate,
+          installments: installmentsCount,
+          total_amount: totalAmount,
+          monthly_payment: monthlyPayment,
+          status: 'active'
+        });
+
+      if (error) throw error;
+
+      await loadLoans();
+      
+      toast({
+        title: "Empréstimo criado",
+        description: `Empréstimo de R$ ${amount.toLocaleString()} criado para ${client.fullName}`
+      });
+    } catch (error) {
+      console.error('Error creating loan:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar empréstimo",
+        variant: "destructive"
+      });
+    }
   };
 
-  const editLoanRate = (loanId: string, newRate: number) => {
-    setLoans(prev => prev.map(loan => {
-      if (loan.id === loanId) {
-        const { totalAmount, monthlyPayment } = calculateLoanDetails(loan.amount, newRate, loan.installments);
-        return {
-          ...loan,
-          interestRate: newRate,
-          totalAmount,
-          monthlyPayment
-        };
-      }
-      return loan;
-    }));
+  const editLoanRate = async (loanId: string, newRate: number) => {
+    try {
+      const loan = loans.find(l => l.id === loanId);
+      if (!loan) return;
 
-    toast({
-      title: "Taxa atualizada",
-      description: `Taxa de juros alterada para ${newRate}% ao mês`
-    });
+      const { totalAmount, monthlyPayment } = calculateLoanDetails(loan.amount, newRate, loan.installments);
+
+      const { error } = await supabase
+        .from('loans')
+        .update({
+          interest_rate: newRate,
+          total_amount: totalAmount,
+          monthly_payment: monthlyPayment
+        })
+        .eq('id', loanId);
+
+      if (error) throw error;
+
+      await loadLoans();
+
+      toast({
+        title: "Taxa atualizada",
+        description: `Taxa de juros alterada para ${newRate}% ao mês`
+      });
+    } catch (error) {
+      console.error('Error updating loan rate:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar taxa",
+        variant: "destructive"
+      });
+    }
   };
 
-  const deleteLoan = (loanId: string) => {
-    const loan = loans.find(l => l.id === loanId);
-    if (!loan) return;
+  const deleteLoan = async (loanId: string) => {
+    try {
+      const loan = loans.find(l => l.id === loanId);
+      if (!loan) return;
 
-    setLoans(prev => prev.filter(l => l.id !== loanId));
-    
-    toast({
-      title: "Empréstimo excluído",
-      description: `Empréstimo de ${loan.clientName} foi removido`,
-      variant: "destructive"
-    });
+      const { error } = await supabase
+        .from('loans')
+        .delete()
+        .eq('id', loanId);
+
+      if (error) throw error;
+
+      await loadLoans();
+      
+      toast({
+        title: "Empréstimo excluído",
+        description: `Empréstimo de ${loan.clientName} foi removido`,
+        variant: "destructive"
+      });
+    } catch (error) {
+      console.error('Error deleting loan:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir empréstimo",
+        variant: "destructive"
+      });
+    }
   };
 
-  const addClient = (clientData: Omit<Client, 'id'>) => {
-    const newClient: Client = {
-      id: Date.now().toString(),
-      ...clientData
-    };
-    setClients(prev => [...prev, newClient]);
+  const addClient = async (clientData: Omit<Client, 'id'>) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .insert({
+          user_id: user.id,
+          full_name: clientData.fullName
+        });
+
+      if (error) throw error;
+
+      await loadClients();
+
+      toast({
+        title: "Cliente adicionado",
+        description: `${clientData.fullName} foi adicionado com sucesso`
+      });
+    } catch (error) {
+      console.error('Error adding client:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar cliente",
+        variant: "destructive"
+      });
+    }
   };
 
-  const editClient = (id: string, clientData: Omit<Client, 'id'>) => {
-    setClients(prev => prev.map(client => 
-      client.id === id ? { ...client, ...clientData } : client
-    ));
+  const editClient = async (id: string, clientData: Omit<Client, 'id'>) => {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          full_name: clientData.fullName
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await loadClients();
+      await loadLoans(); // Reload loans to update client names
+
+      toast({
+        title: "Cliente atualizado",
+        description: `Dados de ${clientData.fullName} foram atualizados`
+      });
+    } catch (error) {
+      console.error('Error updating client:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar cliente",
+        variant: "destructive"
+      });
+    }
   };
 
-  const deleteClient = (id: string) => {
-    setClients(prev => prev.filter(client => client.id !== id));
-    // Also remove loans for this client
-    setLoans(prev => prev.filter(loan => loan.clientId !== id));
+  const deleteClient = async (id: string) => {
+    try {
+      const client = clients.find(c => c.id === id);
+      if (!client) return;
+
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await loadClients();
+      await loadLoans(); // Reload loans to reflect changes
+
+      toast({
+        title: "Cliente removido",
+        description: `${client.fullName} foi removido com sucesso`,
+        variant: "destructive"
+      });
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover cliente",
+        variant: "destructive"
+      });
+    }
   };
 
   const markInstallmentAsPaid = (id: string) => {
@@ -284,6 +427,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loans,
     clients,
     installments,
+    loading,
     createLoan,
     editLoanRate,
     deleteLoan,

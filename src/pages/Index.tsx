@@ -1,8 +1,7 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, Calendar, TrendingUp, Crown } from "lucide-react";
+import { Users, DollarSign, Calendar, TrendingUp, Crown, LogOut } from "lucide-react";
 import ClientManagement from "@/components/ClientManagement";
 import LoanManagement from "@/components/LoanManagement";
 import InstallmentTracking from "@/components/InstallmentTracking";
@@ -10,12 +9,14 @@ import ClientCounter from "@/components/ClientCounter";
 import PlanSelector from "@/components/PlanSelector";
 import { usePlans } from "@/hooks/usePlans";
 import { useAppContext } from "@/contexts/AppContext";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showPlanSelector, setShowPlanSelector] = useState(false);
   const { plans, userPlan, changePlan } = usePlans();
-  const { calculateStats } = useAppContext();
+  const { calculateStats, loading } = useAppContext();
+  const { signOut, user } = useAuth();
 
   // Get real-time stats from app context
   const stats = calculateStats();
@@ -24,6 +25,21 @@ const Index = () => {
     changePlan(planId);
     setShowPlanSelector(false);
   };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Carregando dados...</p>
+        </div>
+      </div>
+    );
+  }
 
   const renderActiveComponent = () => {
     switch (activeTab) {
@@ -208,6 +224,14 @@ const Index = () => {
             >
               <Crown className="h-4 w-4 mr-2" />
               Planos
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
             </Button>
           </div>
         </div>
