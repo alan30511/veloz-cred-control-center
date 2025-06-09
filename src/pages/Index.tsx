@@ -1,8 +1,7 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, Calendar, TrendingUp, Crown, LogOut, Trash2 } from "lucide-react";
+import { Users, DollarSign, Calendar, TrendingUp, Crown, LogOut, Trash2, User, Settings } from "lucide-react";
 import ClientManagement from "@/components/ClientManagement";
 import LoanManagement from "@/components/LoanManagement";
 import InstallmentTracking from "@/components/InstallmentTracking";
@@ -11,6 +10,7 @@ import PlanSelector from "@/components/PlanSelector";
 import { usePlans } from "@/hooks/usePlans";
 import { useAppContext } from "@/contexts/AppContext";
 import { useAuth } from "@/hooks/useAuth";
+import UserSettings from "@/components/UserSettings";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -64,6 +64,8 @@ const Index = () => {
             onClose={() => setActiveTab("dashboard")}
           />
         );
+      case "settings":
+        return <UserSettings />;
       default:
         return (
           <div className="grid gap-6">
@@ -137,11 +139,20 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle>Administração</CardTitle>
                   <CardDescription>
-                    Ferramentas de limpeza e configuração
+                    Ferramentas de administração e configuração
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setActiveTab("settings")}
+                      className="w-full"
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Configurações do Usuário
+                    </Button>
                     <Button 
                       variant="destructive" 
                       size="sm" 
@@ -204,6 +215,14 @@ const Index = () => {
             >
               <Crown className="h-4 w-4 mr-2" />
               Planos
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab("settings")}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Configurações
             </Button>
             <Button
               variant="outline"

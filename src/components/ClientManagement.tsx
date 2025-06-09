@@ -25,7 +25,10 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<any>(null);
   const [formData, setFormData] = useState({
-    fullName: ""
+    fullName: "",
+    cpf: "",
+    phone: "",
+    address: ""
   });
 
   const { toast } = useToast();
@@ -55,7 +58,7 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
       incrementClientCount();
     }
 
-    setFormData({ fullName: "" });
+    setFormData({ fullName: "", cpf: "", phone: "", address: "" });
     setIsFormOpen(false);
     setEditingClient(null);
   };
@@ -63,7 +66,10 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
   const handleEdit = (client: any) => {
     setEditingClient(client);
     setFormData({
-      fullName: client.fullName
+      fullName: client.fullName || "",
+      cpf: client.cpf || "",
+      phone: client.phone || "",
+      address: client.address || ""
     });
     setIsFormOpen(true);
   };
@@ -90,6 +96,23 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
       return;
     }
     setIsFormOpen(true);
+  };
+
+  const formatCPF = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const formatPhone = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{4})\d+?$/, '$1');
   };
 
   return (
@@ -125,6 +148,41 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF</Label>
+                <Input
+                  id="cpf"
+                  value={formData.cpf}
+                  onChange={(e) => setFormData({...formData, cpf: formatCPF(e.target.value)})}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Telefone (WhatsApp)</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: formatPhone(e.target.value)})}
+                  placeholder="(11) 99999-9999"
+                  maxLength={15}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address">Endereço</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  placeholder="Rua, número, bairro, cidade"
+                  required
+                />
+              </div>
+
               <div className="flex gap-2">
                 <Button type="submit">
                   {editingClient ? "Atualizar" : "Cadastrar"}
@@ -135,7 +193,7 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
                   onClick={() => {
                     setIsFormOpen(false);
                     setEditingClient(null);
-                    setFormData({ fullName: "" });
+                    setFormData({ fullName: "", cpf: "", phone: "", address: "" });
                   }}
                 >
                   Cancelar
@@ -153,8 +211,27 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
               <div className="flex justify-between items-start">
                 <div className="space-y-2">
                   <h3 className="font-semibold text-lg">{client.fullName}</h3>
+                  {client.cpf && (
+                    <p className="text-sm text-muted-foreground">CPF: {client.cpf}</p>
+                  )}
+                  {client.phone && (
+                    <p className="text-sm text-muted-foreground">Telefone: {client.phone}</p>
+                  )}
+                  {client.address && (
+                    <p className="text-sm text-muted-foreground">Endereço: {client.address}</p>
+                  )}
                 </div>
                 <div className="flex gap-2">
+                  {client.phone && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => openWhatsApp(client.phone)}
+                      title="Abrir WhatsApp"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button 
                     size="sm" 
                     variant="outline"

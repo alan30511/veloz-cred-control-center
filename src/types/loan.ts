@@ -1,4 +1,3 @@
-
 export interface Loan {
   id: string;
   clientId: string;
@@ -15,6 +14,9 @@ export interface Loan {
 export interface Client {
   id: string;
   fullName: string;
+  cpf?: string;
+  phone?: string;
+  address?: string;
 }
 
 export interface LoanFormData {

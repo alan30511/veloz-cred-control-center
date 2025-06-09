@@ -89,7 +89,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Map Supabase data to Client interface
       const formattedClients = data?.map(client => ({
         id: client.id,
-        fullName: client.full_name
+        fullName: client.full_name,
+        cpf: client.cpf || '',
+        phone: client.phone || '',
+        address: client.address || ''
       })) || [];
       
       setClients(formattedClients);
@@ -337,7 +340,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .from('clients')
         .insert({
           user_id: user.id,
-          full_name: clientData.fullName
+          full_name: clientData.fullName,
+          cpf: clientData.cpf,
+          phone: clientData.phone,
+          address: clientData.address
         });
 
       if (error) throw error;
@@ -363,7 +369,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { error } = await supabase
         .from('clients')
         .update({
-          full_name: clientData.fullName
+          full_name: clientData.fullName,
+          cpf: clientData.cpf,
+          phone: clientData.phone,
+          address: clientData.address
         })
         .eq('id', id)
         .eq('user_id', user?.id);
