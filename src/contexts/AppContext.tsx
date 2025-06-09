@@ -1,9 +1,12 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Loan, Client, LoanFormData } from '@/types/loan';
 import { calculateLoanDetails } from '@/utils/loanCalculations';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Installment {
   id: string;
@@ -58,6 +61,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (user) {
       loadClients();
       loadLoans();
+    } else {
+      // Clear data when user logs out
+      setClients([]);
+      setLoans([]);
+      setInstallments([]);
+      setLoading(false);
     }
   }, [user]);
 
@@ -71,6 +80,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { data, error } = await supabase
         .from('clients')
         .select('*')
+        .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -99,6 +109,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { data, error } = await supabase
         .from('loans')
         .select('*')
+        .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -232,7 +243,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           total_amount: totalAmount,
           monthly_payment: monthlyPayment
         })
-        .eq('id', loanId);
+        .eq('id', loanId)
+        .eq('user_id', user?.id);
 
       if (error) throw error;
 
@@ -260,7 +272,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const { error } = await supabase
         .from('loans')
         .delete()
-        .eq('id', loanId);
+        .eq('id', loanId)
+        .eq('user_id', user?.id);
 
       if (error) throw error;
 
@@ -317,9 +330,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .update({
           full_name: clientData.fullName
         })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user?.id);
 
       if (error) throw error;
+
+      // Update client name in loans table as well
+      await supabase
+        .from('loans')
+        .update({
+          client_name: clientData.fullName
+        })
+        .eq('client_id', id)
+        .eq('user_id', user?.id);
 
       await loadClients();
       await loadLoans(); // Reload loans to update client names
@@ -343,10 +366,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const client = clients.find(c => c.id === id);
       if (!client) return;
 
+      // First delete all loans associated with this client
+      await supabase
+        .from('loans')
+        .delete()
+        .eq('client_id', id)
+        .eq('user_id', user?.id);
+
+      // Then delete the client
       const { error } = await supabase
         .from('clients')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user?.id);
 
       if (error) throw error;
 
@@ -355,7 +387,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       toast({
         title: "Cliente removido",
-        description: `${client.fullName} foi removido com sucesso`,
+        description: `${client.fullName} e todos os empréstimos associados foram removidos`,
         variant: "destructive"
       });
     } catch (error) {
@@ -382,55 +414,99 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const generateReport = () => {
-    const reportData = clients.map(client => {
-      const clientLoans = loans.filter(loan => loan.clientId === client.id);
-      const clientInstallments = installments.filter(inst => 
-        clientLoans.some(loan => loan.id === inst.loanId)
-      );
+    try {
+      const doc = new jsPDF();
       
-      return clientLoans.map(loan => {
-        const loanInstallments = clientInstallments.filter(inst => inst.loanId === loan.id);
-        const paidInstallments = loanInstallments.filter(inst => inst.status === "paid").length;
-        const remainingInstallments = loan.installments - paidInstallments;
+      // Header
+      doc.setFontSize(20);
+      doc.text('Relatório de Clientes e Empréstimos', 20, 20);
+      
+      doc.setFontSize(12);
+      doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, 30);
+      
+      // Prepare data for the table
+      const reportData = clients.map(client => {
+        const clientLoans = loans.filter(loan => loan.clientId === client.id);
+        const clientInstallments = installments.filter(inst => 
+          clientLoans.some(loan => loan.id === inst.loanId)
+        );
+        
+        return clientLoans.map(loan => {
+          const loanInstallments = clientInstallments.filter(inst => inst.loanId === loan.id);
+          const paidInstallments = loanInstallments.filter(inst => inst.status === "paid").length;
+          const remainingInstallments = loan.installments - paidInstallments;
 
-        return {
-          "Nome do Cliente": client.fullName,
-          "Valor do Empréstimo": `R$ ${loan.amount.toLocaleString()}`,
-          "Taxa de Juros": `${loan.interestRate}%`,
-          "Total de Parcelas": loan.installments,
-          "Parcelas Pagas": paidInstallments,
-          "Parcelas Restantes": remainingInstallments,
-          "Valor Total": `R$ ${loan.totalAmount.toLocaleString()}`,
-          "Data do Empréstimo": new Date(loan.loanDate).toLocaleDateString(),
-          "Status": loan.status === "active" ? "Ativo" : "Finalizado"
-        };
+          return [
+            client.fullName,
+            `R$ ${loan.amount.toLocaleString('pt-BR')}`,
+            `${loan.interestRate}%`,
+            loan.installments.toString(),
+            paidInstallments.toString(),
+            remainingInstallments.toString(),
+            `R$ ${loan.totalAmount.toLocaleString('pt-BR')}`,
+            new Date(loan.loanDate).toLocaleDateString('pt-BR'),
+            loan.status === "active" ? "Ativo" : "Finalizado"
+          ];
+        });
+      }).flat();
+
+      // Table headers
+      const headers = [
+        'Cliente',
+        'Valor Empréstimo',
+        'Taxa Juros',
+        'Total Parcelas',
+        'Parcelas Pagas',
+        'Parcelas Restantes',
+        'Valor Total',
+        'Data Empréstimo',
+        'Status'
+      ];
+
+      // Generate table
+      autoTable(doc, {
+        head: [headers],
+        body: reportData,
+        startY: 40,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2
+        },
+        headStyles: {
+          fillColor: [66, 139, 202],
+          textColor: 255
+        }
       });
-    }).flat();
 
-    // Convert to CSV
-    const headers = Object.keys(reportData[0] || {});
-    const csvContent = [
-      headers.join(','),
-      ...reportData.map(row => 
-        headers.map(header => `"${row[header as keyof typeof row]}"`).join(',')
-      )
-    ].join('\n');
+      // Statistics section
+      const stats = calculateStats();
+      const finalY = (doc as any).lastAutoTable.finalY + 20;
+      
+      doc.setFontSize(14);
+      doc.text('Resumo Estatístico', 20, finalY);
+      
+      doc.setFontSize(10);
+      doc.text(`Total Emprestado: R$ ${stats.totalLoaned.toLocaleString('pt-BR')}`, 20, finalY + 10);
+      doc.text(`Total em Juros: R$ ${stats.totalReceived.toLocaleString('pt-BR')}`, 20, finalY + 20);
+      doc.text(`Clientes Ativos: ${stats.activeClients}`, 20, finalY + 30);
+      doc.text(`Empréstimos Ativos: ${stats.activeLoans}`, 20, finalY + 40);
+      doc.text(`Pagamentos Atrasados: ${stats.overduePayments}`, 20, finalY + 50);
 
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `relatorio-clientes-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Save the PDF
+      doc.save(`relatorio-clientes-${new Date().toISOString().split('T')[0]}.pdf`);
 
-    toast({
-      title: "Relatório gerado",
-      description: "O arquivo CSV foi baixado com sucesso."
-    });
+      toast({
+        title: "Relatório gerado",
+        description: "O arquivo PDF foi baixado com sucesso."
+      });
+    } catch (error) {
+      console.error('Error generating PDF report:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar relatório PDF",
+        variant: "destructive"
+      });
+    }
   };
 
   const value = {
