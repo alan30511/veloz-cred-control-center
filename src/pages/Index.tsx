@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, Calendar, TrendingUp, Crown, LogOut } from "lucide-react";
+import { Users, DollarSign, Calendar, TrendingUp, Crown, LogOut, Trash2 } from "lucide-react";
 import ClientManagement from "@/components/ClientManagement";
 import LoanManagement from "@/components/LoanManagement";
 import InstallmentTracking from "@/components/InstallmentTracking";
@@ -13,9 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [showPlanSelector, setShowPlanSelector] = useState(false);
   const { plans, userPlan, changePlan } = usePlans();
-  const { calculateStats, loading } = useAppContext();
+  const { calculateStats, loading, clearAllData } = useAppContext();
   const { signOut, user } = useAuth();
 
   // Get real-time stats from app context
@@ -23,11 +23,17 @@ const Index = () => {
 
   const handlePlanChange = (planId: string) => {
     changePlan(planId);
-    setShowPlanSelector(false);
+    setActiveTab("dashboard");
   };
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleClearData = async () => {
+    if (window.confirm("Tem certeza que deseja remover todos os dados? Esta ação não pode ser desfeita.")) {
+      await clearAllData();
+    }
   };
 
   if (loading) {
@@ -61,15 +67,6 @@ const Index = () => {
       default:
         return (
           <div className="grid gap-6">
-            {showPlanSelector && (
-              <PlanSelector
-                plans={plans}
-                currentPlanId={userPlan.currentPlan.id}
-                onSelectPlan={handlePlanChange}
-                onClose={() => setShowPlanSelector(false)}
-              />
-            )}
-            
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -123,54 +120,37 @@ const Index = () => {
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Empréstimos Recentes</CardTitle>
+                  <CardTitle>Clientes Ativos</CardTitle>
                   <CardDescription>
-                    Últimos empréstimos cadastrados
+                    Total de clientes com empréstimos ativos
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">João Silva</p>
-                        <p className="text-xs text-muted-foreground">R$ 5.000 - 10x</p>
-                      </div>
-                      <div className="text-sm text-muted-foreground">Hoje</div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Maria Santos</p>
-                        <p className="text-xs text-muted-foreground">R$ 3.000 - 6x</p>
-                      </div>
-                      <div className="text-sm text-muted-foreground">Ontem</div>
-                    </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-primary">{stats.activeClients}</div>
+                    <p className="text-sm text-muted-foreground mt-2">clientes ativos</p>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Próximos Vencimentos</CardTitle>
+                  <CardTitle>Administração</CardTitle>
                   <CardDescription>
-                    Parcelas que vencem nos próximos dias
+                    Ferramentas de limpeza e configuração
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Ana Costa</p>
-                        <p className="text-xs text-muted-foreground">R$ 600 - Parcela 3/8</p>
-                      </div>
-                      <div className="text-sm text-red-600">Amanhã</div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Carlos Lima</p>
-                        <p className="text-xs text-muted-foreground">R$ 450 - Parcela 2/5</p>
-                      </div>
-                      <div className="text-sm text-yellow-600">3 dias</div>
-                    </div>
+                  <div className="space-y-2">
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={handleClearData}
+                      className="w-full"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Limpar Todos os Dados
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -220,7 +200,7 @@ const Index = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowPlanSelector(true)}
+              onClick={() => setActiveTab("plans")}
             >
               <Crown className="h-4 w-4 mr-2" />
               Planos

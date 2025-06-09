@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,68 +8,34 @@ import { Plus, Edit, Trash2, Phone, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlan } from "@/types/plan";
 import { usePlans } from "@/hooks/usePlans";
-
-interface Client {
-  id: string;
-  fullName: string;
-  cpf: string;
-  phone: string;
-  whatsapp: string;
-  address: string;
-}
+import { useAppContext } from "@/contexts/AppContext";
 
 interface ClientManagementProps {
   userPlan: UserPlan;
 }
 
 const ClientManagement = ({ userPlan }: ClientManagementProps) => {
-  const [clients, setClients] = useState<Client[]>([
-    {
-      id: "1",
-      fullName: "João Silva",
-      cpf: "123.456.789-00",
-      phone: "(11) 99999-9999",
-      whatsapp: "(11) 99999-9999",
-      address: "Rua das Flores, 123"
-    },
-    {
-      id: "2", 
-      fullName: "Maria Santos",
-      cpf: "987.654.321-00",
-      phone: "(11) 88888-8888",
-      whatsapp: "(11) 88888-8888",
-      address: "Av. Principal, 456"
-    }
-  ]);
+  const { 
+    clients, 
+    addClient, 
+    editClient, 
+    deleteClient 
+  } = useAppContext();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [editingClient, setEditingClient] = useState<any>(null);
   const [formData, setFormData] = useState({
-    fullName: "",
-    cpf: "",
-    phone: "",
-    whatsapp: "",
-    address: ""
+    fullName: ""
   });
 
   const { toast } = useToast();
   const { incrementClientCount, decrementClientCount, canAddClient } = usePlans();
 
-  // Update client count when clients change
-  useEffect(() => {
-    // This would normally sync with the actual client count from the plans hook
-    console.log(`Current client count: ${clients.length}`);
-  }, [clients.length]);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (editingClient) {
-      setClients(prev => prev.map(client => 
-        client.id === editingClient.id 
-          ? { ...editingClient, ...formData }
-          : client
-      ));
+      await editClient(editingClient.id, formData);
       toast({
         title: "Cliente atualizado",
         description: "Os dados do cliente foram atualizados com sucesso."
@@ -85,52 +51,32 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
         return;
       }
 
-      const newClient: Client = {
-        id: Date.now().toString(),
-        ...formData
-      };
-      setClients(prev => [...prev, newClient]);
+      await addClient(formData);
       incrementClientCount();
-      toast({
-        title: "Cliente adicionado",
-        description: "Novo cliente foi cadastrado com sucesso."
-      });
     }
 
-    setFormData({
-      fullName: "",
-      cpf: "",
-      phone: "",
-      whatsapp: "",
-      address: ""
-    });
+    setFormData({ fullName: "" });
     setIsFormOpen(false);
     setEditingClient(null);
   };
 
-  const handleEdit = (client: Client) => {
+  const handleEdit = (client: any) => {
     setEditingClient(client);
     setFormData({
-      fullName: client.fullName,
-      cpf: client.cpf,
-      phone: client.phone,
-      whatsapp: client.whatsapp,
-      address: client.address
+      fullName: client.fullName
     });
     setIsFormOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setClients(prev => prev.filter(client => client.id !== id));
-    decrementClientCount();
-    toast({
-      title: "Cliente removido",
-      description: "O cliente foi removido com sucesso."
-    });
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Tem certeza que deseja excluir este cliente? Todos os empréstimos associados também serão removidos.")) {
+      await deleteClient(id);
+      decrementClientCount();
+    }
   };
 
-  const openWhatsApp = (whatsapp: string) => {
-    const cleanNumber = whatsapp.replace(/\D/g, '');
+  const openWhatsApp = (phone: string) => {
+    const cleanNumber = phone.replace(/\D/g, '');
     window.open(`https://wa.me/55${cleanNumber}`, '_blank');
   };
 
@@ -168,7 +114,7 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+            <form onSubmit={handleSubmit} className="grid gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Nome Completo</Label>
                 <Input
@@ -179,50 +125,7 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cpf">CPF</Label>
-                <Input
-                  id="cpf"
-                  value={formData.cpf}
-                  onChange={(e) => setFormData({...formData, cpf: e.target.value})}
-                  placeholder="000.000.000-00"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  placeholder="(11) 99999-9999"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="whatsapp">WhatsApp</Label>
-                <Input
-                  id="whatsapp"
-                  value={formData.whatsapp}
-                  onChange={(e) => setFormData({...formData, whatsapp: e.target.value})}
-                  placeholder="(11) 99999-9999"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="address">Endereço</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  required
-                />
-              </div>
-
-              <div className="flex gap-2 md:col-span-2">
+              <div className="flex gap-2">
                 <Button type="submit">
                   {editingClient ? "Atualizar" : "Cadastrar"}
                 </Button>
@@ -232,13 +135,7 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
                   onClick={() => {
                     setIsFormOpen(false);
                     setEditingClient(null);
-                    setFormData({
-                      fullName: "",
-                      cpf: "",
-                      phone: "",
-                      whatsapp: "",
-                      address: ""
-                    });
+                    setFormData({ fullName: "" });
                   }}
                 >
                   Cancelar
@@ -256,21 +153,8 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
               <div className="flex justify-between items-start">
                 <div className="space-y-2">
                   <h3 className="font-semibold text-lg">{client.fullName}</h3>
-                  <p className="text-sm text-muted-foreground">CPF: {client.cpf}</p>
-                  <p className="text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4 inline mr-1" />
-                    {client.phone}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{client.address}</p>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => openWhatsApp(client.whatsapp)}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                  </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
@@ -290,6 +174,14 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
             </CardContent>
           </Card>
         ))}
+        
+        {clients.length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground">Nenhum cliente cadastrado</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

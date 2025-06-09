@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Loan, Client, LoanFormData } from '@/types/loan';
 import { calculateLoanDetails } from '@/utils/loanCalculations';
@@ -35,6 +34,7 @@ interface AppContextType {
   markInstallmentAsPaid: (id: string) => void;
   calculateStats: () => any;
   generateReport: () => void;
+  clearAllData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -77,6 +77,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const loadClients = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('clients')
         .select('*')
@@ -182,6 +183,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activeLoans: activeLoans.length,
       overduePayments
     };
+  };
+
+  const clearAllData = async () => {
+    if (!user) return;
+
+    try {
+      // Delete all loans first (due to foreign key constraints)
+      await supabase
+        .from('loans')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Then delete all clients
+      await supabase
+        .from('clients')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Reload data to update state
+      await loadClients();
+      await loadLoans();
+
+      toast({
+        title: "Dados limpos",
+        description: "Todos os dados foram removidos com sucesso"
+      });
+    } catch (error) {
+      console.error('Error clearing data:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao limpar dados",
+        variant: "destructive"
+      });
+    }
   };
 
   const createLoan = async (formData: LoanFormData) => {
@@ -367,23 +402,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!client) return;
 
       // First delete all loans associated with this client
-      await supabase
+      const { error: loansError } = await supabase
         .from('loans')
         .delete()
         .eq('client_id', id)
         .eq('user_id', user?.id);
 
+      if (loansError) throw loansError;
+
       // Then delete the client
-      const { error } = await supabase
+      const { error: clientError } = await supabase
         .from('clients')
         .delete()
         .eq('id', id)
         .eq('user_id', user?.id);
 
-      if (error) throw error;
+      if (clientError) throw clientError;
 
+      // Reload both clients and loans to update state immediately
       await loadClients();
-      await loadLoans(); // Reload loans to reflect changes
+      await loadLoans();
 
       toast({
         title: "Cliente removido",
@@ -522,7 +560,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deleteClient,
     markInstallmentAsPaid,
     calculateStats,
-    generateReport
+    generateReport,
+    clearAllData
   };
 
   return (
