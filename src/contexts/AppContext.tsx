@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Loan, Client, LoanFormData } from '@/types/loan';
 import { calculateLoanDetails } from '@/utils/loanCalculations';
@@ -76,7 +75,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (error) throw error;
       
-      setClients(data || []);
+      // Map Supabase data to Client interface
+      const formattedClients = data?.map(client => ({
+        id: client.id,
+        fullName: client.full_name
+      })) || [];
+      
+      setClients(formattedClients);
     } catch (error) {
       console.error('Error loading clients:', error);
       toast({
@@ -98,13 +103,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (error) throw error;
       
+      // Map Supabase data to Loan interface
       const formattedLoans = data?.map(loan => ({
-        ...loan,
+        id: loan.id,
+        clientId: loan.client_id,
+        clientName: loan.client_name,
         amount: Number(loan.amount),
         interestRate: Number(loan.interest_rate),
+        installments: loan.installments,
         totalAmount: Number(loan.total_amount),
         monthlyPayment: Number(loan.monthly_payment),
-        loanDate: loan.loan_date
+        loanDate: loan.loan_date,
+        status: loan.status as "active" | "completed"
       })) || [];
       
       setLoans(formattedLoans);
