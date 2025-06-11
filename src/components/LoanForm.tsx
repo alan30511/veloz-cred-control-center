@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { Client, LoanFormData } from "@/types/loan";
 import { calculateLoanDetails } from "@/utils/loanCalculations";
 
@@ -19,7 +24,9 @@ const LoanForm = ({ clients, onSubmit, onCancel }: LoanFormProps) => {
     clientId: "",
     amount: "",
     interestRate: "20",
-    installments: ""
+    installments: "",
+    loanDate: new Date(),
+    firstPaymentDate: new Date()
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -29,7 +36,9 @@ const LoanForm = ({ clients, onSubmit, onCancel }: LoanFormProps) => {
       clientId: "",
       amount: "",
       interestRate: "20",
-      installments: ""
+      installments: "",
+      loanDate: new Date(),
+      firstPaymentDate: new Date()
     });
   };
 
@@ -125,6 +134,60 @@ const LoanForm = ({ clients, onSubmit, onCancel }: LoanFormProps) => {
                 placeholder="10"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Data da Solicitação</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.loanDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.loanDate ? format(formData.loanDate, "dd/MM/yyyy") : "Selecione a data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.loanDate}
+                    onSelect={(date) => setFormData({...formData, loanDate: date || new Date()})}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Data do Primeiro Vencimento</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.firstPaymentDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.firstPaymentDate ? format(formData.firstPaymentDate, "dd/MM/yyyy") : "Selecione a data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.firstPaymentDate}
+                    onSelect={(date) => setFormData({...formData, firstPaymentDate: date || new Date()})}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 

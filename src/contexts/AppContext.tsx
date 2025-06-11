@@ -146,14 +146,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const generateInstallments = () => {
     const newInstallments: Installment[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
     
     loans.forEach(loan => {
       const client = clients.find(c => c.id === loan.clientId);
       if (!client) return;
 
+      const firstPaymentDate = new Date(loan.firstPaymentDate || loan.loanDate);
+
       for (let i = 1; i <= loan.installments; i++) {
-        const dueDate = new Date(loan.loanDate);
-        dueDate.setMonth(dueDate.getMonth() + i);
+        const dueDate = new Date(firstPaymentDate);
+        dueDate.setMonth(dueDate.getMonth() + (i - 1));
+        
+        // Determine status based on due date comparison
+        let status: "pending" | "paid" | "overdue" = "pending";
+        
+        // For demo purposes, mark first installment as paid
+        if (i === 1) {
+          status = "paid";
+        } else if (dueDate < today) {
+          // Only mark as overdue if the due date has actually passed
+          status = "overdue";
+        }
         
         newInstallments.push({
           id: `${loan.id}-${i}`,
@@ -164,8 +179,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           totalInstallments: loan.installments,
           amount: loan.monthlyPayment,
           dueDate: dueDate.toISOString().split('T')[0],
-          status: i <= 1 ? "paid" : i === 2 ? "overdue" : "pending",
-          paidDate: i <= 1 ? new Date().toISOString().split('T')[0] : undefined
+          status,
+          paidDate: status === "paid" ? new Date().toISOString().split('T')[0] : undefined
         });
       }
     });
@@ -247,6 +262,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           installments: installmentsCount,
           total_amount: totalAmount,
           monthly_payment: monthlyPayment,
+          loan_date: formData.loanDate.toISOString().split('T')[0],
+          first_payment_date: formData.firstPaymentDate.toISOString().split('T')[0],
           status: 'active'
         });
 
