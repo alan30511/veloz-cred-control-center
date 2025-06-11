@@ -1,25 +1,15 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Loan, Client, LoanFormData } from '@/types/loan';
-import { calculateLoanDetails } from '@/utils/loanCalculations';
+import { Installment } from '@/types/installment';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
-interface Installment {
-  id: string;
-  loanId: string;
-  clientName: string;
-  clientWhatsapp: string;
-  installmentNumber: number;
-  totalInstallments: number;
-  amount: number;
-  dueDate: string;
-  status: "pending" | "paid" | "overdue";
-  paidDate?: string;
-}
+import { clientService } from '@/services/clientService';
+import { loanService } from '@/services/loanService';
+import { useInstallments } from '@/hooks/useInstallments';
+import { useStats } from '@/hooks/useStats';
+import { generateReport } from '@/services/reportService';
 
 interface AppContextType {
   loans: Loan[];
@@ -54,8 +44,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   const [clients, setClients] = useState<Client[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
-  const [installments, setInstallments] = useState<Installment[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const { installments, markInstallmentAsPaid } = useInstallments(loans, clients);
+  const stats = useStats(loans, installments);
 
   // Load data from Supabase
   useEffect(() => {
@@ -63,39 +55,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       loadClients();
       loadLoans();
     } else {
-      // Clear data when user logs out
       setClients([]);
       setLoans([]);
-      setInstallments([]);
       setLoading(false);
     }
   }, [user]);
 
-  // Generate installments when loans change
-  useEffect(() => {
-    generateInstallments();
-  }, [loans, clients]);
-
   const loadClients = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      
-      // Map Supabase data to Client interface
-      const formattedClients = data?.map(client => ({
-        id: client.id,
-        fullName: client.full_name,
-        cpf: client.cpf || '',
-        phone: client.phone || '',
-        address: client.address || ''
-      })) || [];
-      
+      const formattedClients = await clientService.loadClients(user!.id);
       setClients(formattedClients);
     } catch (error) {
       console.error('Error loading clients:', error);
@@ -111,29 +80,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const loadLoans = async () => {
     try {
-      const { data, error } = await supabase
-        .from('loans')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      
-      // Map Supabase data to Loan interface
-      const formattedLoans = data?.map(loan => ({
-        id: loan.id,
-        clientId: loan.client_id,
-        clientName: loan.client_name,
-        amount: Number(loan.amount),
-        interestRate: Number(loan.interest_rate),
-        installments: loan.installments,
-        totalAmount: Number(loan.total_amount),
-        monthlyPayment: Number(loan.monthly_payment),
-        loanDate: loan.loan_date,
-        firstPaymentDate: loan.first_payment_date || loan.loan_date, // Add firstPaymentDate property with fallback
-        status: loan.status as "active" | "completed"
-      })) || [];
-      
+      const formattedLoans = await loanService.loadLoans(user!.id);
       setLoans(formattedLoans);
     } catch (error) {
       console.error('Error loading loans:', error);
@@ -145,83 +92,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const generateInstallments = () => {
-    const newInstallments: Installment[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
-    
-    loans.forEach(loan => {
-      const client = clients.find(c => c.id === loan.clientId);
-      if (!client) return;
-
-      const firstPaymentDate = new Date(loan.firstPaymentDate || loan.loanDate);
-
-      for (let i = 1; i <= loan.installments; i++) {
-        const dueDate = new Date(firstPaymentDate);
-        dueDate.setMonth(dueDate.getMonth() + (i - 1));
-        
-        // Determine status based on due date comparison
-        let status: "pending" | "paid" | "overdue" = "pending";
-        
-        // For demo purposes, mark first installment as paid
-        if (i === 1) {
-          status = "paid";
-        } else if (dueDate < today) {
-          // Only mark as overdue if the due date has actually passed
-          status = "overdue";
-        }
-        
-        newInstallments.push({
-          id: `${loan.id}-${i}`,
-          loanId: loan.id,
-          clientName: loan.clientName,
-          clientWhatsapp: client.phone || "(11) 99999-9999",
-          installmentNumber: i,
-          totalInstallments: loan.installments,
-          amount: loan.monthlyPayment,
-          dueDate: dueDate.toISOString().split('T')[0],
-          status,
-          paidDate: status === "paid" ? new Date().toISOString().split('T')[0] : undefined
-        });
-      }
-    });
-    
-    setInstallments(newInstallments);
-  };
-
-  const calculateStats = () => {
-    const activeLoans = loans.filter(loan => loan.status === "active");
-    const totalLoaned = activeLoans.reduce((sum, loan) => sum + loan.amount, 0);
-    const totalReceived = activeLoans.reduce((sum, loan) => sum + (loan.totalAmount - loan.amount), 0);
-    const activeClients = new Set(activeLoans.map(loan => loan.clientId)).size;
-    const overduePayments = installments.filter(i => i.status === "overdue").length;
-    
-    return {
-      totalLoaned,
-      totalReceived,
-      activeClients,
-      activeLoans: activeLoans.length,
-      overduePayments
-    };
-  };
-
   const clearAllData = async () => {
     if (!user) return;
 
     try {
-      // Delete all loans first (due to foreign key constraints)
-      await supabase
-        .from('loans')
-        .delete()
-        .eq('user_id', user.id);
+      await supabase.from('loans').delete().eq('user_id', user.id);
+      await supabase.from('clients').delete().eq('user_id', user.id);
 
-      // Then delete all clients
-      await supabase
-        .from('clients')
-        .delete()
-        .eq('user_id', user.id);
-
-      // Reload data to update state
       await loadClients();
       await loadLoans();
 
@@ -243,38 +120,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!user) return;
 
     try {
-      const amount = parseFloat(formData.amount);
-      const interestRate = parseFloat(formData.interestRate);
-      const installmentsCount = parseInt(formData.installments);
-      
       const client = clients.find(c => c.id === formData.clientId);
       if (!client) return;
 
-      const { totalAmount, monthlyPayment } = calculateLoanDetails(amount, interestRate, installmentsCount);
-
-      const { error } = await supabase
-        .from('loans')
-        .insert({
-          user_id: user.id,
-          client_id: formData.clientId,
-          client_name: client.fullName,
-          amount,
-          interest_rate: interestRate,
-          installments: installmentsCount,
-          total_amount: totalAmount,
-          monthly_payment: monthlyPayment,
-          loan_date: formData.loanDate.toISOString().split('T')[0],
-          first_payment_date: formData.firstPaymentDate.toISOString().split('T')[0],
-          status: 'active'
-        });
-
-      if (error) throw error;
-
+      await loanService.createLoan(user.id, formData, client.fullName);
       await loadLoans();
       
       toast({
         title: "Empréstimo criado",
-        description: `Empréstimo de R$ ${amount.toLocaleString()} criado para ${client.fullName}`
+        description: `Empréstimo de R$ ${parseFloat(formData.amount).toLocaleString()} criado para ${client.fullName}`
       });
     } catch (error) {
       console.error('Error creating loan:', error);
@@ -291,20 +145,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const loan = loans.find(l => l.id === loanId);
       if (!loan) return;
 
-      const { totalAmount, monthlyPayment } = calculateLoanDetails(loan.amount, newRate, loan.installments);
-
-      const { error } = await supabase
-        .from('loans')
-        .update({
-          interest_rate: newRate,
-          total_amount: totalAmount,
-          monthly_payment: monthlyPayment
-        })
-        .eq('id', loanId)
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
-
+      await loanService.editLoanRate(user!.id, loanId, loan.amount, newRate, loan.installments);
       await loadLoans();
 
       toast({
@@ -326,14 +167,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const loan = loans.find(l => l.id === loanId);
       if (!loan) return;
 
-      const { error } = await supabase
-        .from('loans')
-        .delete()
-        .eq('id', loanId)
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
-
+      await loanService.deleteLoan(user!.id, loanId);
       await loadLoans();
       
       toast({
@@ -355,18 +189,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!user) return;
 
     try {
-      const { error } = await supabase
-        .from('clients')
-        .insert({
-          user_id: user.id,
-          full_name: clientData.fullName,
-          cpf: clientData.cpf,
-          phone: clientData.phone,
-          address: clientData.address
-        });
-
-      if (error) throw error;
-
+      await clientService.addClient(user.id, clientData);
       await loadClients();
 
       toast({
@@ -385,30 +208,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const editClient = async (id: string, clientData: Omit<Client, 'id'>) => {
     try {
-      const { error } = await supabase
-        .from('clients')
-        .update({
-          full_name: clientData.fullName,
-          cpf: clientData.cpf,
-          phone: clientData.phone,
-          address: clientData.address
-        })
-        .eq('id', id)
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
-
-      // Update client name in loans table as well
-      await supabase
-        .from('loans')
-        .update({
-          client_name: clientData.fullName
-        })
-        .eq('client_id', id)
-        .eq('user_id', user?.id);
-
+      await clientService.editClient(user!.id, id, clientData);
       await loadClients();
-      await loadLoans(); // Reload loans to update client names
+      await loadLoans();
 
       toast({
         title: "Cliente atualizado",
@@ -429,25 +231,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const client = clients.find(c => c.id === id);
       if (!client) return;
 
-      // First delete all loans associated with this client
-      const { error: loansError } = await supabase
-        .from('loans')
-        .delete()
-        .eq('client_id', id)
-        .eq('user_id', user?.id);
-
-      if (loansError) throw loansError;
-
-      // Then delete the client
-      const { error: clientError } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user?.id);
-
-      if (clientError) throw clientError;
-
-      // Reload both clients and loans to update state immediately
+      await clientService.deleteClient(user!.id, id);
       await loadClients();
       await loadLoans();
 
@@ -466,101 +250,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const markInstallmentAsPaid = (id: string) => {
-    setInstallments(prev => prev.map(installment => 
-      installment.id === id 
-        ? { ...installment, status: "paid" as const, paidDate: new Date().toISOString().split('T')[0] }
-        : installment
-    ));
-    
+  const handleMarkInstallmentAsPaid = (id: string) => {
+    markInstallmentAsPaid(id);
     toast({
       title: "Parcela marcada como paga",
       description: "A parcela foi atualizada com sucesso."
     });
   };
 
-  const generateReport = () => {
+  const handleGenerateReport = () => {
     try {
-      const doc = new jsPDF();
-      
-      // Header
-      doc.setFontSize(20);
-      doc.text('Relatório de Clientes e Empréstimos', 20, 20);
-      
-      doc.setFontSize(12);
-      doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, 30);
-      
-      // Prepare data for the table
-      const reportData = clients.map(client => {
-        const clientLoans = loans.filter(loan => loan.clientId === client.id);
-        const clientInstallments = installments.filter(inst => 
-          clientLoans.some(loan => loan.id === inst.loanId)
-        );
-        
-        return clientLoans.map(loan => {
-          const loanInstallments = clientInstallments.filter(inst => inst.loanId === loan.id);
-          const paidInstallments = loanInstallments.filter(inst => inst.status === "paid").length;
-          const remainingInstallments = loan.installments - paidInstallments;
-
-          return [
-            client.fullName,
-            `R$ ${loan.amount.toLocaleString('pt-BR')}`,
-            `${loan.interestRate}%`,
-            loan.installments.toString(),
-            paidInstallments.toString(),
-            remainingInstallments.toString(),
-            `R$ ${loan.totalAmount.toLocaleString('pt-BR')}`,
-            new Date(loan.loanDate).toLocaleDateString('pt-BR'),
-            loan.status === "active" ? "Ativo" : "Finalizado"
-          ];
-        });
-      }).flat();
-
-      // Table headers
-      const headers = [
-        'Cliente',
-        'Valor Empréstimo',
-        'Taxa Juros',
-        'Total Parcelas',
-        'Parcelas Pagas',
-        'Parcelas Restantes',
-        'Valor Total',
-        'Data Empréstimo',
-        'Status'
-      ];
-
-      // Generate table
-      autoTable(doc, {
-        head: [headers],
-        body: reportData,
-        startY: 40,
-        styles: {
-          fontSize: 8,
-          cellPadding: 2
-        },
-        headStyles: {
-          fillColor: [66, 139, 202],
-          textColor: 255
-        }
-      });
-
-      // Statistics section
-      const stats = calculateStats();
-      const finalY = (doc as any).lastAutoTable.finalY + 20;
-      
-      doc.setFontSize(14);
-      doc.text('Resumo Estatístico', 20, finalY);
-      
-      doc.setFontSize(10);
-      doc.text(`Total Emprestado: R$ ${stats.totalLoaned.toLocaleString('pt-BR')}`, 20, finalY + 10);
-      doc.text(`Total em Juros: R$ ${stats.totalReceived.toLocaleString('pt-BR')}`, 20, finalY + 20);
-      doc.text(`Clientes Ativos: ${stats.activeClients}`, 20, finalY + 30);
-      doc.text(`Empréstimos Ativos: ${stats.activeLoans}`, 20, finalY + 40);
-      doc.text(`Pagamentos Atrasados: ${stats.overduePayments}`, 20, finalY + 50);
-
-      // Save the PDF
-      doc.save(`relatorio-clientes-${new Date().toISOString().split('T')[0]}.pdf`);
-
+      generateReport(clients, loans, installments, stats);
       toast({
         title: "Relatório gerado",
         description: "O arquivo PDF foi baixado com sucesso."
@@ -586,9 +286,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addClient,
     editClient,
     deleteClient,
-    markInstallmentAsPaid,
-    calculateStats,
-    generateReport,
+    markInstallmentAsPaid: handleMarkInstallmentAsPaid,
+    calculateStats: () => stats,
+    generateReport: handleGenerateReport,
     clearAllData
   };
 
