@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Loan, Client, LoanFormData } from '@/types/loan';
 import { calculateLoanDetails } from '@/utils/loanCalculations';
@@ -158,7 +159,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: `${loan.id}-${i}`,
           loanId: loan.id,
           clientName: loan.clientName,
-          clientWhatsapp: "(11) 99999-9999", // Mock data
+          clientWhatsapp: client.phone || "(11) 99999-9999",
           installmentNumber: i,
           totalInstallments: loan.installments,
           amount: loan.monthlyPayment,
