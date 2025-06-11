@@ -130,6 +130,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         totalAmount: Number(loan.total_amount),
         monthlyPayment: Number(loan.monthly_payment),
         loanDate: loan.loan_date,
+        firstPaymentDate: loan.first_payment_date || loan.loan_date, // Add firstPaymentDate property with fallback
         status: loan.status as "active" | "completed"
       })) || [];
       
