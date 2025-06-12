@@ -22,12 +22,18 @@ export const useInstallments = (loans: Loan[], clients: Client[]) => {
         dueDate.setMonth(dueDate.getMonth() + (i - 1));
         
         let status: "pending" | "paid" | "overdue" = "pending";
+        let lateFee = 0;
         
-        if (i === 1) {
-          status = "paid";
-        } else if (dueDate < today) {
+        // Remove a marcação automática como pago da primeira parcela
+        if (dueDate < today) {
           status = "overdue";
+          // Calcula multa: R$ 10,00 por dia de atraso
+          const diffTime = today.getTime() - dueDate.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          lateFee = diffDays * 10;
         }
+        
+        const totalAmount = loan.monthlyPayment + lateFee;
         
         newInstallments.push({
           id: `${loan.id}-${i}`,
@@ -39,7 +45,8 @@ export const useInstallments = (loans: Loan[], clients: Client[]) => {
           amount: loan.monthlyPayment,
           dueDate: dueDate.toISOString().split('T')[0],
           status,
-          paidDate: status === "paid" ? new Date().toISOString().split('T')[0] : undefined
+          lateFee,
+          totalAmount
         });
       }
     });

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, CheckCircle, Clock, AlertCircle, MessageSquare, DollarSign } from "lucide-react";
+import { Calendar, CheckCircle, Clock, AlertCircle, MessageSquare, DollarSign, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 
@@ -36,11 +36,17 @@ const InstallmentTracking = () => {
 
   const sendWhatsAppReminder = (installment: any) => {
     const cleanNumber = installment.clientWhatsapp.replace(/\D/g, '');
+    const lateFeeText = installment.lateFee && installment.lateFee > 0 
+      ? `\n⚠️ Multa por atraso: R$ ${installment.lateFee.toLocaleString()}\n` 
+      : '';
+    
     const message = encodeURIComponent(
       `Olá ${installment.clientName}! 📅\n\n` +
       `Lembrete: Sua parcela ${installment.installmentNumber}/${installment.totalInstallments} ` +
       `no valor de R$ ${installment.amount.toLocaleString()} ` +
-      `vence em ${new Date(installment.dueDate).toLocaleDateString()}.\n\n` +
+      `vence em ${new Date(installment.dueDate).toLocaleDateString()}.\n` +
+      lateFeeText +
+      `Valor total: R$ ${(installment.totalAmount || installment.amount).toLocaleString()}\n\n` +
       `Por favor, entre em contato para confirmar o pagamento.\n\n` +
       `Obrigado!\nVeloz Cred`
     );
@@ -61,6 +67,22 @@ const InstallmentTracking = () => {
     return diffDays;
   };
 
+  const confirmPayment = (installment: any) => {
+    const lateFeeText = installment.lateFee && installment.lateFee > 0 
+      ? ` (incluindo R$ ${installment.lateFee.toLocaleString()} de multa por atraso)`
+      : '';
+    
+    const confirmed = window.confirm(
+      `Confirmar pagamento da parcela ${installment.installmentNumber}/${installment.totalInstallments} ` +
+      `de ${installment.clientName}?\n\n` +
+      `Valor: R$ ${(installment.totalAmount || installment.amount).toLocaleString()}${lateFeeText}`
+    );
+    
+    if (confirmed) {
+      markInstallmentAsPaid(installment.id);
+    }
+  };
+
   const filteredInstallments = installments.filter(installment => {
     if (filter === "all") return true;
     return installment.status === filter;
@@ -72,7 +94,8 @@ const InstallmentTracking = () => {
     pending: installments.filter(i => i.status === "pending").length,
     overdue: installments.filter(i => i.status === "overdue").length,
     totalAmount: installments.reduce((sum, i) => sum + i.amount, 0),
-    paidAmount: installments.filter(i => i.status === "paid").reduce((sum, i) => sum + i.amount, 0)
+    paidAmount: installments.filter(i => i.status === "paid").reduce((sum, i) => sum + i.amount, 0),
+    totalLateFees: installments.reduce((sum, i) => sum + (i.lateFee || 0), 0)
   };
 
   return (
@@ -81,11 +104,20 @@ const InstallmentTracking = () => {
         <div>
           <h2 className="text-2xl font-bold">Acompanhamento de Parcelas</h2>
           <p className="text-muted-foreground">Gerencie pagamentos e envie lembretes</p>
+          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <p className="text-sm text-yellow-800">
+                <strong>Importante:</strong> Parcelas em atraso têm multa de R$ 10,00 por dia. 
+                Use o botão "Confirmar Pagamento" para marcar como pago.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Estatísticas */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -130,6 +162,18 @@ const InstallmentTracking = () => {
                 <p className="text-2xl font-bold text-red-600">{stats.overdue}</p>
               </div>
               <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Multas Acumuladas</p>
+                <p className="text-2xl font-bold text-red-600">R$ {stats.totalLateFees.toLocaleString()}</p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-red-600" />
             </div>
           </CardContent>
         </Card>
@@ -186,7 +230,7 @@ const InstallmentTracking = () => {
                       {getStatusBadge(installment.status)}
                     </div>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                       <div>
                         <p className="text-muted-foreground">Parcela:</p>
                         <p className="font-semibold">
@@ -194,8 +238,20 @@ const InstallmentTracking = () => {
                         </p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Valor:</p>
+                        <p className="text-muted-foreground">Valor Original:</p>
                         <p className="font-semibold">R$ {installment.amount.toLocaleString()}</p>
+                      </div>
+                      {installment.lateFee && installment.lateFee > 0 && (
+                        <div>
+                          <p className="text-muted-foreground">Multa por Atraso:</p>
+                          <p className="font-semibold text-red-600">R$ {installment.lateFee.toLocaleString()}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-muted-foreground">Valor Total:</p>
+                        <p className="font-semibold text-lg">
+                          R$ {(installment.totalAmount || installment.amount).toLocaleString()}
+                        </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Vencimento:</p>
@@ -203,24 +259,25 @@ const InstallmentTracking = () => {
                           {new Date(installment.dueDate).toLocaleDateString()}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Status:</p>
-                        <p className={`font-semibold ${
-                          installment.status === 'overdue' ? 'text-red-600' : 
-                          installment.status === 'paid' ? 'text-green-600' : 'text-yellow-600'
-                        }`}>
-                          {installment.status === 'overdue' 
-                            ? `${Math.abs(daysDiff)} dias atrasado`
-                            : installment.status === 'paid'
-                            ? `Pago em ${installment.paidDate ? new Date(installment.paidDate).toLocaleDateString() : ''}`
-                            : daysDiff > 0 
-                            ? `${daysDiff} dias restantes`
-                            : daysDiff === 0
-                            ? 'Vence hoje'
-                            : `${Math.abs(daysDiff)} dias atrasado`
-                          }
-                        </p>
-                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-muted-foreground">Status:</p>
+                      <p className={`font-semibold ${
+                        installment.status === 'overdue' ? 'text-red-600' : 
+                        installment.status === 'paid' ? 'text-green-600' : 'text-yellow-600'
+                      }`}>
+                        {installment.status === 'overdue' 
+                          ? `${Math.abs(daysDiff)} dias atrasado (R$ 10/dia)`
+                          : installment.status === 'paid'
+                          ? `Pago em ${installment.paidDate ? new Date(installment.paidDate).toLocaleDateString() : ''}`
+                          : daysDiff > 0 
+                          ? `${daysDiff} dias restantes`
+                          : daysDiff === 0
+                          ? 'Vence hoje'
+                          : `${Math.abs(daysDiff)} dias atrasado`
+                        }
+                      </p>
                     </div>
                   </div>
                   
@@ -235,10 +292,11 @@ const InstallmentTracking = () => {
                     {installment.status !== "paid" && (
                       <Button 
                         size="sm"
-                        onClick={() => markInstallmentAsPaid(installment.id)}
+                        onClick={() => confirmPayment(installment)}
+                        className="bg-green-600 hover:bg-green-700"
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
-                        Marcar como Pago
+                        Confirmar Pagamento
                       </Button>
                     )}
                   </div>

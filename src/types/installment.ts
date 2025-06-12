@@ -10,4 +10,6 @@ export interface Installment {
   dueDate: string;
   status: "pending" | "paid" | "overdue";
   paidDate?: string;
+  lateFee?: number;
+  totalAmount?: number;
 }
