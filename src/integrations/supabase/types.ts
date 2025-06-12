@@ -48,6 +48,7 @@ export type Database = {
           client_id: string
           client_name: string
           created_at: string | null
+          first_payment_date: string | null
           id: string
           installments: number
           interest_rate: number
@@ -63,6 +64,7 @@ export type Database = {
           client_id: string
           client_name: string
           created_at?: string | null
+          first_payment_date?: string | null
           id?: string
           installments: number
           interest_rate: number
@@ -78,6 +80,7 @@ export type Database = {
           client_id?: string
           client_name?: string
           created_at?: string | null
+          first_payment_date?: string | null
           id?: string
           installments?: number
           interest_rate?: number
