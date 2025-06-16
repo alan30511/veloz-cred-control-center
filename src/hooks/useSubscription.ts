@@ -23,7 +23,6 @@ export const useSubscription = () => {
   const checkSubscription = async () => {
     if (!user) return;
 
-    setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription');
       
@@ -32,13 +31,7 @@ export const useSubscription = () => {
       setSubscription(data);
     } catch (error) {
       console.error('Error checking subscription:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao verificar assinatura",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+      // Don't show error toast on initial load to avoid annoying users
     }
   };
 
