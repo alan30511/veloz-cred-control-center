@@ -77,21 +77,15 @@ serve(async (req) => {
     // Create Stripe checkout session
     const stripe = (await import('https://esm.sh/stripe@14.21.0')).default(stripeKey)
 
-    // Define price data for each plan (using price_data to create prices dynamically)
-    const planPricing = {
-      'silver': {
-        name: 'Plano Silver',
-        amount: 2990, // R$ 29,90 in cents
-        features: 'Até 10 clientes, Relatórios avançados, Suporte prioritário, Backup automático'
-      },
-      'gold': {
-        name: 'Plano Gold', 
-        amount: 4990, // R$ 49,90 in cents
-        features: 'Clientes ilimitados, Todos os recursos Silver, Suporte 24/7, API personalizada'
-      }
+    // Map plan IDs to correct Stripe Price IDs
+    const planPriceMapping = {
+      'silver': 'price_1RaTLo4J821s9xRYtV9Wexel',
+      'gold': 'price_1RaTMh4J821s9xRYE1pkc1WB'
     }
 
-    const selectedPlan = planPricing[planId.toLowerCase() as keyof typeof planPricing]
+    const priceId = planPriceMapping[planId.toLowerCase() as keyof typeof planPriceMapping]
+
+    console.log(`Creating checkout for plan: ${planId}, price ID: ${priceId}`)
 
     // Check if customer already exists
     const customers = await stripe.customers.list({
@@ -109,17 +103,7 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price_data: {
-            currency: 'brl',
-            product_data: {
-              name: selectedPlan.name,
-              description: selectedPlan.features,
-            },
-            unit_amount: selectedPlan.amount,
-            recurring: {
-              interval: 'month',
-            },
-          },
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -134,6 +118,8 @@ serve(async (req) => {
       billing_address_collection: 'auto',
       locale: 'pt-BR',
     })
+
+    console.log(`Checkout session created: ${session.id}, URL: ${session.url}`)
 
     return new Response(
       JSON.stringify({ url: session.url }),

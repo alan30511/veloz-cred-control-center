@@ -153,25 +153,22 @@ serve(async (req) => {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       
-      // Determine tier based on price amount
+      // Determine tier based on the correct Price IDs
       const priceId = subscription.items.data[0].price.id;
-      const price = await stripe.prices.retrieve(priceId);
-      const amount = price.unit_amount || 0;
       
-      // Map price amounts to plan tiers (amounts in cents)
-      if (amount >= 4990) { // R$ 49,90 or more
-        subscriptionTier = "gold";
-      } else if (amount >= 2990) { // R$ 29,90 or more
-        subscriptionTier = "silver";
-      } else {
-        subscriptionTier = "silver"; // Default to silver for any paid plan
-      }
+      // Map Price IDs to plan tiers
+      const priceTierMapping = {
+        'price_1RaTLo4J821s9xRYtV9Wexel': 'silver', // Silver plan
+        'price_1RaTMh4J821s9xRYE1pkc1WB': 'gold'   // Gold plan
+      };
+      
+      subscriptionTier = priceTierMapping[priceId as keyof typeof priceTierMapping] || 'silver';
       
       logStep("Active subscription found", { 
         subscriptionId: subscription.id, 
         tier: subscriptionTier,
         endDate: subscriptionEnd,
-        amount: amount 
+        priceId: priceId 
       });
     } else {
       logStep("No active subscription found");
