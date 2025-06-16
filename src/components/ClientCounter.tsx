@@ -2,26 +2,29 @@
 import { Badge } from "@/components/ui/badge";
 import { Users } from "lucide-react";
 import { UserPlan } from "@/types/plan";
+import { useAppContext } from "@/contexts/AppContext";
 
 interface ClientCounterProps {
   userPlan: UserPlan;
 }
 
 const ClientCounter = ({ userPlan }: ClientCounterProps) => {
-  const { currentPlan, clientCount } = userPlan;
-  const maxClients = currentPlan.maxClients;
+  const { clients } = useAppContext();
+  
+  const currentCount = clients.length;
+  const maxClients = userPlan.currentPlan.maxClients;
+  
+  const isNearLimit = maxClients && currentCount >= maxClients * 0.8;
+  const isAtLimit = maxClients && currentCount >= maxClients;
 
   return (
-    <div className="flex items-center space-x-2">
-      <Users className="h-4 w-4 text-muted-foreground" />
-      <span className="text-sm text-muted-foreground">Clientes:</span>
-      <Badge variant={maxClients && clientCount >= maxClients ? "destructive" : "secondary"}>
-        {clientCount}{maxClients ? `/${maxClients}` : ""}
-      </Badge>
-      <span className="text-xs text-muted-foreground">
-        Plano {currentPlan.name}
-      </span>
-    </div>
+    <Badge 
+      variant={isAtLimit ? "destructive" : isNearLimit ? "secondary" : "outline"}
+      className="flex items-center gap-1"
+    >
+      <Users className="h-3 w-3" />
+      {currentCount}/{maxClients || "∞"}
+    </Badge>
   );
 };
 

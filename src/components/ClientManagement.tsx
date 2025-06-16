@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Edit, Trash2, Phone, MessageSquare } from "lucide-react";
+import { Plus, Edit, Trash2, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlan } from "@/types/plan";
 import { usePlans } from "@/hooks/usePlans";
@@ -32,7 +32,7 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
   });
 
   const { toast } = useToast();
-  const { incrementClientCount, decrementClientCount, canAddClient } = usePlans();
+  const { canAddClient } = usePlans();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,8 +44,8 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
         description: "Os dados do cliente foram atualizados com sucesso."
       });
     } else {
-      // Check if can add new client
-      if (!canAddClient()) {
+      // Use actual client count from context
+      if (!canAddClient(clients.length)) {
         toast({
           title: "Limite atingido",
           description: `Você atingiu o limite de ${userPlan.currentPlan.maxClients} clientes do plano ${userPlan.currentPlan.name}. Faça upgrade para adicionar mais clientes.`,
@@ -55,7 +55,10 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
       }
 
       await addClient(formData);
-      incrementClientCount();
+      toast({
+        title: "Cliente adicionado",
+        description: "Cliente cadastrado com sucesso!"
+      });
     }
 
     setFormData({ fullName: "", cpf: "", phone: "", address: "" });
@@ -77,7 +80,10 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
   const handleDelete = async (id: string) => {
     if (window.confirm("Tem certeza que deseja excluir este cliente? Todos os empréstimos associados também serão removidos.")) {
       await deleteClient(id);
-      decrementClientCount();
+      toast({
+        title: "Cliente removido",
+        description: "Cliente excluído com sucesso!"
+      });
     }
   };
 
@@ -87,7 +93,8 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
   };
 
   const handleNewClient = () => {
-    if (!canAddClient()) {
+    // Use actual client count from context
+    if (!canAddClient(clients.length)) {
       toast({
         title: "Limite atingido",
         description: `Você atingiu o limite de ${userPlan.currentPlan.maxClients} clientes do plano ${userPlan.currentPlan.name}. Faça upgrade para adicionar mais clientes.`,
@@ -120,7 +127,9 @@ const ClientManagement = ({ userPlan }: ClientManagementProps) => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Gerenciamento de Clientes</h2>
-          <p className="text-muted-foreground">Cadastre e gerencie seus clientes</p>
+          <p className="text-muted-foreground">
+            Cadastre e gerencie seus clientes ({clients.length}/{userPlan.currentPlan.maxClients || "∞"})
+          </p>
         </div>
         <Button onClick={handleNewClient}>
           <Plus className="h-4 w-4 mr-2" />

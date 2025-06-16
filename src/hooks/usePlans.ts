@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plan, UserPlan } from "@/types/plan";
 import { useOptimizedSubscription } from "@/hooks/useOptimizedSubscription";
 
@@ -55,41 +55,32 @@ export const usePlans = () => {
 
   const currentPlan = getCurrentPlan();
   
-  const [userPlan, setUserPlan] = useState<UserPlan>({
+  // Remove the internal clientCount state - this will be managed by AppContext
+  const [userPlan] = useState<UserPlan>({
     currentPlan,
-    clientCount: 0
+    clientCount: 0 // This will be overridden by the actual client count
   });
 
-  const canAddClient = () => {
+  // Function to check if user can add client based on actual client count
+  const canAddClient = (actualClientCount: number) => {
     if (currentPlan.maxClients === null) return true;
-    return userPlan.clientCount < currentPlan.maxClients;
+    return actualClientCount < currentPlan.maxClients;
   };
 
+  // These functions are no longer needed as client count is managed by AppContext
   const incrementClientCount = () => {
-    if (canAddClient()) {
-      setUserPlan(prev => ({
-        ...prev,
-        clientCount: prev.clientCount + 1
-      }));
-      return true;
-    }
-    return false;
+    return true; // Always return true, actual management in AppContext
   };
 
   const decrementClientCount = () => {
-    setUserPlan(prev => ({
-      ...prev,
-      clientCount: Math.max(0, prev.clientCount - 1)
-    }));
+    // No-op, actual management in AppContext
   };
 
   const changePlan = (planId: string) => {
     const newPlan = plans.find(p => p.id === planId);
     if (newPlan) {
-      setUserPlan(prev => ({
-        ...prev,
-        currentPlan: newPlan
-      }));
+      // Plan change should trigger subscription update
+      console.log(`Plan change requested to: ${planId}`);
     }
   };
 

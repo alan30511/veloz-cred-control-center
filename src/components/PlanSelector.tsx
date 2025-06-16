@@ -18,16 +18,25 @@ const PlanSelector = ({ plans, currentPlanId, onSelectPlan, onClose }: PlanSelec
   const { createCheckout, openCustomerPortal, loading, subscription, checkSubscription } = useOptimizedSubscription();
 
   const handlePlanSelect = async (planId: string) => {
-    if (planId === currentPlanId) {
+    console.log(`Selecting plan: ${planId}, current: ${currentPlanId}`);
+    
+    if (planId === currentPlanId && subscription.subscribed) {
+      console.log("Already on this plan");
       return;
     }
 
     if (planId === "free") {
-      onSelectPlan(planId);
+      // If user wants to downgrade to free, they need to cancel their subscription
+      if (subscription.subscribed) {
+        await openCustomerPortal();
+      } else {
+        onSelectPlan(planId);
+      }
       return;
     }
 
     // For paid plans, redirect to Stripe checkout
+    console.log(`Creating checkout for plan: ${planId}`);
     await createCheckout(planId);
   };
 
@@ -44,8 +53,19 @@ const PlanSelector = ({ plans, currentPlanId, onSelectPlan, onClose }: PlanSelec
 
   // Check subscription status when component mounts or user requests it
   const handleRefreshStatus = async () => {
+    console.log("Refreshing subscription status...");
     await checkSubscription(true);
   };
+
+  // Determine the actual current plan based on subscription
+  const getEffectiveCurrentPlan = () => {
+    if (subscription.subscribed && subscription.subscription_tier) {
+      return subscription.subscription_tier;
+    }
+    return "free";
+  };
+
+  const effectiveCurrentPlan = getEffectiveCurrentPlan();
 
   return (
     <div className="space-y-6">
@@ -72,7 +92,7 @@ const PlanSelector = ({ plans, currentPlanId, onSelectPlan, onClose }: PlanSelec
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             {plans.map((plan) => {
-              const isCurrentPlan = currentPlanId === plan.id;
+              const isCurrentPlan = effectiveCurrentPlan === plan.id;
               const isActivePaidPlan = subscription.subscribed && subscription.subscription_tier === plan.id;
               
               return (
@@ -109,9 +129,9 @@ const PlanSelector = ({ plans, currentPlanId, onSelectPlan, onClose }: PlanSelec
                         className="w-full" 
                         variant={isCurrentPlan ? "outline" : "default"}
                         onClick={() => handlePlanSelect(plan.id)}
-                        disabled={isCurrentPlan}
+                        disabled={isCurrentPlan && !subscription.subscribed}
                       >
-                        {isCurrentPlan ? "Plano Atual" : "Usar Gratuito"}
+                        {isCurrentPlan && !subscription.subscribed ? "Plano Atual" : subscription.subscribed ? "Cancelar Assinatura" : "Usar Gratuito"}
                       </Button>
                     ) : (
                       <div className="space-y-2">
