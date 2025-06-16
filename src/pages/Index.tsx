@@ -292,7 +292,7 @@ const Index = () => {
         </> : <>
           {/* Desktop Header */}
           <div className="border-b bg-white">
-            <div className="flex h-16 items-center px-4">
+            <div className="flex h-16 items-center px-4 bg-emerald-400">
               <div className="flex items-center space-x-2">
                 <DollarSign className="h-6 w-6 text-primary" />
                 <h1 className="text-xl font-bold">Veloz Cred</h1>
