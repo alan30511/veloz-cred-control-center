@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MobileCard, MobileCardContent, MobileCardDescription, MobileCardHeader, MobileCardTitle } from "@/components/ui/mobile-card";
 import { Button } from "@/components/ui/button";
-import { Users, DollarSign, Calendar, TrendingUp, Crown, LogOut, Trash2, User, Settings, Download } from "lucide-react";
+import { Users, DollarSign, Calendar, TrendingUp, Crown, LogOut, Trash2, User, Settings, Download, PlusCircle } from "lucide-react";
 import ClientManagement from "@/components/ClientManagement";
 import LoanManagement from "@/components/LoanManagement";
 import InstallmentTracking from "@/components/InstallmentTracking";
@@ -15,6 +15,7 @@ import { usePlans } from "@/hooks/usePlans";
 import { useAppContext } from "@/contexts/AppContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const {
@@ -115,14 +116,18 @@ const Index = () => {
           <MobileCardDescription>Acesso rápido às funções principais</MobileCardDescription>
         </MobileCardHeader>
         <MobileCardContent>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2" onClick={() => setActiveTab("clients")}>
               <Users className="h-5 w-5" />
               <span className="text-sm">Clientes</span>
             </Button>
+            <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2" onClick={() => setActiveTab("loans")}>
+              <PlusCircle className="h-5 w-5" />
+              <span className="text-sm">Lançamentos</span>
+            </Button>
             <Button variant="outline" className="h-auto p-4 flex flex-col items-center gap-2" onClick={() => setActiveTab("installments")}>
               <Calendar className="h-5 w-5" />
-              <span className="text-sm">Parcelas</span>
+              <span className="text-sm">Empréstimos</span>
             </Button>
           </div>
         </MobileCardContent>
@@ -332,4 +337,5 @@ const Index = () => {
         </>}
     </div>;
 };
+
 export default Index;
