@@ -2,10 +2,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Star, RefreshCw } from "lucide-react";
+import { Check, Crown, Star } from "lucide-react";
 import { Plan } from "@/types/plan";
-import { useOptimizedSubscription } from "@/hooks/useOptimizedSubscription";
-import SubscriptionStatus from "./SubscriptionStatus";
 
 interface PlanSelectorProps {
   plans: Plan[];
@@ -15,29 +13,9 @@ interface PlanSelectorProps {
 }
 
 const PlanSelector = ({ plans, currentPlanId, onSelectPlan, onClose }: PlanSelectorProps) => {
-  const { createCheckout, openCustomerPortal, loading, subscription, checkSubscription } = useOptimizedSubscription();
-
-  const handlePlanSelect = async (planId: string) => {
-    console.log(`Selecting plan: ${planId}, current: ${currentPlanId}`);
-    
-    if (planId === currentPlanId && subscription.subscribed) {
-      console.log("Already on this plan");
-      return;
-    }
-
-    if (planId === "free") {
-      // If user wants to downgrade to free, they need to cancel their subscription
-      if (subscription.subscribed) {
-        await openCustomerPortal();
-      } else {
-        onSelectPlan(planId);
-      }
-      return;
-    }
-
-    // For paid plans, redirect to Stripe checkout
-    console.log(`Creating checkout for plan: ${planId}`);
-    await createCheckout(planId);
+  const handlePlanSelect = (planId: string) => {
+    console.log(`Selecionando plano: ${planId}`);
+    onSelectPlan(planId);
   };
 
   const getPlanIcon = (planId: string) => {
@@ -51,49 +29,19 @@ const PlanSelector = ({ plans, currentPlanId, onSelectPlan, onClose }: PlanSelec
     }
   };
 
-  // Check subscription status when component mounts or user requests it
-  const handleRefreshStatus = async () => {
-    console.log("Refreshing subscription status...");
-    await checkSubscription(true);
-  };
-
-  // Determine the actual current plan based on subscription
-  const getEffectiveCurrentPlan = () => {
-    if (subscription.subscribed && subscription.subscription_tier) {
-      return subscription.subscription_tier;
-    }
-    return "free";
-  };
-
-  const effectiveCurrentPlan = getEffectiveCurrentPlan();
-
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle>Escolha seu Plano</CardTitle>
-              <CardDescription>
-                Selecione o plano que melhor atende suas necessidades
-              </CardDescription>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefreshStatus}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Verificar Status
-            </Button>
-          </div>
+          <CardTitle>Escolha seu Plano</CardTitle>
+          <CardDescription>
+            Selecione o plano que melhor atende suas necessidades
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             {plans.map((plan) => {
-              const isCurrentPlan = effectiveCurrentPlan === plan.id;
-              const isActivePaidPlan = subscription.subscribed && subscription.subscription_tier === plan.id;
+              const isCurrentPlan = currentPlanId === plan.id;
               
               return (
                 <Card key={plan.id} className={`relative ${isCurrentPlan ? 'ring-2 ring-primary' : ''}`}>
@@ -124,47 +72,14 @@ const PlanSelector = ({ plans, currentPlanId, onSelectPlan, onClose }: PlanSelec
                       ))}
                     </ul>
                     
-                    {plan.id === "free" ? (
-                      <Button 
-                        className="w-full" 
-                        variant={isCurrentPlan ? "outline" : "default"}
-                        onClick={() => handlePlanSelect(plan.id)}
-                        disabled={isCurrentPlan && !subscription.subscribed}
-                      >
-                        {isCurrentPlan && !subscription.subscribed ? "Plano Atual" : subscription.subscribed ? "Cancelar Assinatura" : "Usar Gratuito"}
-                      </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        {isActivePaidPlan ? (
-                          <>
-                            <Button 
-                              className="w-full" 
-                              variant="outline"
-                              disabled
-                            >
-                              Plano Ativo
-                            </Button>
-                            <Button 
-                              className="w-full" 
-                              variant="secondary"
-                              onClick={openCustomerPortal}
-                              disabled={loading}
-                            >
-                              {loading ? "Carregando..." : "Gerenciar Assinatura"}
-                            </Button>
-                          </>
-                        ) : (
-                          <Button 
-                            className="w-full" 
-                            variant="default"
-                            onClick={() => handlePlanSelect(plan.id)}
-                            disabled={loading}
-                          >
-                            {loading ? "Processando..." : `Assinar ${plan.name}`}
-                          </Button>
-                        )}
-                      </div>
-                    )}
+                    <Button 
+                      className="w-full" 
+                      variant={isCurrentPlan ? "outline" : "default"}
+                      onClick={() => handlePlanSelect(plan.id)}
+                      disabled={isCurrentPlan}
+                    >
+                      {isCurrentPlan ? "Plano Atual" : `Selecionar ${plan.name}`}
+                    </Button>
                   </CardContent>
                 </Card>
               );
@@ -178,8 +93,6 @@ const PlanSelector = ({ plans, currentPlanId, onSelectPlan, onClose }: PlanSelec
           </div>
         </CardContent>
       </Card>
-
-      <SubscriptionStatus />
     </div>
   );
 };

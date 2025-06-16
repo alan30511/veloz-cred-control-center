@@ -1,11 +1,8 @@
 
 import { useState, useEffect } from "react";
 import { Plan, UserPlan } from "@/types/plan";
-import { useOptimizedSubscription } from "@/hooks/useOptimizedSubscription";
 
 export const usePlans = () => {
-  const { subscription } = useOptimizedSubscription();
-  
   const plans: Plan[] = [
     {
       id: "free",
@@ -45,17 +42,13 @@ export const usePlans = () => {
     }
   ];
 
-  // Determine current plan based on subscription
+  // Get current plan from localStorage or default to free
   const getCurrentPlan = () => {
-    if (subscription.subscribed && subscription.subscription_tier) {
-      return plans.find(p => p.id === subscription.subscription_tier) || plans[0];
-    }
-    return plans[0]; // Free plan
+    const savedPlanId = localStorage.getItem('currentPlan');
+    return plans.find(p => p.id === savedPlanId) || plans[0];
   };
 
-  const currentPlan = getCurrentPlan();
-  
-  // Remove the internal clientCount state - this will be managed by AppContext
+  const [currentPlan, setCurrentPlan] = useState<Plan>(getCurrentPlan());
   const [userPlan] = useState<UserPlan>({
     currentPlan,
     clientCount: 0 // This will be overridden by the actual client count
@@ -79,8 +72,9 @@ export const usePlans = () => {
   const changePlan = (planId: string) => {
     const newPlan = plans.find(p => p.id === planId);
     if (newPlan) {
-      // Plan change should trigger subscription update
-      console.log(`Plan change requested to: ${planId}`);
+      setCurrentPlan(newPlan);
+      localStorage.setItem('currentPlan', planId);
+      console.log(`Plano alterado para: ${newPlan.name}`);
     }
   };
 
@@ -94,6 +88,11 @@ export const usePlans = () => {
     incrementClientCount,
     decrementClientCount,
     changePlan,
-    subscription
+    // Remove subscription reference
+    subscription: {
+      subscribed: currentPlan.id !== 'free',
+      subscription_tier: currentPlan.id !== 'free' ? currentPlan.id : null,
+      subscription_end: null
+    }
   };
 };
