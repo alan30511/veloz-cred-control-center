@@ -63,7 +63,7 @@ serve(async (req) => {
     }
 
     // Validate planId against allowed values
-    const allowedPlans = ['basic', 'premium', 'enterprise']
+    const allowedPlans = ['silver', 'gold']
     if (!allowedPlans.includes(planId.trim().toLowerCase())) {
       return new Response(
         JSON.stringify({ error: 'Invalid plan selection' }),
@@ -77,28 +77,62 @@ serve(async (req) => {
     // Create Stripe checkout session
     const stripe = (await import('https://esm.sh/stripe@14.21.0')).default(stripeKey)
 
-    // Define price mapping (in a real app, these would be in environment variables or database)
-    const priceMapping = {
-      'basic': 'price_basic_monthly',
-      'premium': 'price_premium_monthly', 
-      'enterprise': 'price_enterprise_monthly'
+    // Define price data for each plan (using price_data to create prices dynamically)
+    const planPricing = {
+      'silver': {
+        name: 'Plano Silver',
+        amount: 2990, // R$ 29,90 in cents
+        features: 'Até 10 clientes, Relatórios avançados, Suporte prioritário, Backup automático'
+      },
+      'gold': {
+        name: 'Plano Gold', 
+        amount: 4990, // R$ 49,90 in cents
+        features: 'Clientes ilimitados, Todos os recursos Silver, Suporte 24/7, API personalizada'
+      }
+    }
+
+    const selectedPlan = planPricing[planId.toLowerCase() as keyof typeof planPricing]
+
+    // Check if customer already exists
+    const customers = await stripe.customers.list({
+      email: user.email,
+      limit: 1
+    })
+
+    let customerId = null
+    if (customers.data.length > 0) {
+      customerId = customers.data[0].id
     }
 
     const session = await stripe.checkout.sessions.create({
-      customer_email: user.email,
+      customer: customerId,
+      customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: priceMapping[planId.toLowerCase() as keyof typeof priceMapping],
+          price_data: {
+            currency: 'brl',
+            product_data: {
+              name: selectedPlan.name,
+              description: selectedPlan.features,
+            },
+            unit_amount: selectedPlan.amount,
+            recurring: {
+              interval: 'month',
+            },
+          },
           quantity: 1,
         },
       ],
       mode: 'subscription',
-      success_url: `${req.headers.get('origin')}/success`,
-      cancel_url: `${req.headers.get('origin')}/cancel`,
+      success_url: `${req.headers.get('origin')}/?success=true&plan=${planId}`,
+      cancel_url: `${req.headers.get('origin')}/?canceled=true`,
       metadata: {
         user_id: user.id,
         plan_id: planId,
       },
+      allow_promotion_codes: true,
+      billing_address_collection: 'auto',
+      locale: 'pt-BR',
     })
 
     return new Response(

@@ -106,8 +106,14 @@ serve(async (req) => {
     if (customers.data.length === 0) {
       logStep("No customer found in Stripe");
       
-      // Update database with no subscription
-      await supabaseClient.from('subscribers').upsert({
+      // Update database with no subscription using service role key
+      const supabaseService = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        { auth: { persistSession: false } }
+      );
+
+      await supabaseService.from('subscribers').upsert({
         user_id: user.id,
         email: user.email,
         stripe_customer_id: null,
@@ -147,28 +153,38 @@ serve(async (req) => {
       const subscription = subscriptions.data[0];
       subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       
-      // Determine tier based on price (simplified)
+      // Determine tier based on price amount
       const priceId = subscription.items.data[0].price.id;
       const price = await stripe.prices.retrieve(priceId);
       const amount = price.unit_amount || 0;
       
-      if (amount <= 3000) { // $30 or less
+      // Map price amounts to plan tiers (amounts in cents)
+      if (amount >= 4990) { // R$ 49,90 or more
+        subscriptionTier = "gold";
+      } else if (amount >= 2990) { // R$ 29,90 or more
         subscriptionTier = "silver";
       } else {
-        subscriptionTier = "gold";
+        subscriptionTier = "silver"; // Default to silver for any paid plan
       }
       
       logStep("Active subscription found", { 
         subscriptionId: subscription.id, 
         tier: subscriptionTier,
-        endDate: subscriptionEnd 
+        endDate: subscriptionEnd,
+        amount: amount 
       });
     } else {
       logStep("No active subscription found");
     }
 
-    // Update database with fresh data
-    await supabaseClient.from('subscribers').upsert({
+    // Update database with fresh data using service role key
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
+    );
+
+    await supabaseService.from('subscribers').upsert({
       user_id: user.id,
       email: user.email,
       stripe_customer_id: customerId,
