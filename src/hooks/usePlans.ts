@@ -1,8 +1,11 @@
 
 import { useState } from "react";
 import { Plan, UserPlan } from "@/types/plan";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export const usePlans = () => {
+  const { subscription } = useSubscription();
+  
   const plans: Plan[] = [
     {
       id: "free",
@@ -42,14 +45,24 @@ export const usePlans = () => {
     }
   ];
 
+  // Determine current plan based on subscription
+  const getCurrentPlan = () => {
+    if (subscription.subscribed && subscription.subscription_tier) {
+      return plans.find(p => p.id === subscription.subscription_tier) || plans[0];
+    }
+    return plans[0]; // Free plan
+  };
+
+  const currentPlan = getCurrentPlan();
+  
   const [userPlan, setUserPlan] = useState<UserPlan>({
-    currentPlan: plans[0], // Starts with free plan
+    currentPlan,
     clientCount: 0
   });
 
   const canAddClient = () => {
-    if (userPlan.currentPlan.maxClients === null) return true;
-    return userPlan.clientCount < userPlan.currentPlan.maxClients;
+    if (currentPlan.maxClients === null) return true;
+    return userPlan.clientCount < currentPlan.maxClients;
   };
 
   const incrementClientCount = () => {
@@ -82,10 +95,14 @@ export const usePlans = () => {
 
   return {
     plans,
-    userPlan,
+    userPlan: {
+      ...userPlan,
+      currentPlan
+    },
     canAddClient,
     incrementClientCount,
     decrementClientCount,
-    changePlan
+    changePlan,
+    subscription
   };
 };
