@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Loan, Client, LoanFormData } from '@/types/loan';
 import { Installment } from '@/types/installment';
@@ -45,9 +44,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [clients, setClients] = useState<Client[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [paidInstallments, setPaidInstallments] = useState<string[]>([]);
 
-  const { installments, markInstallmentAsPaid } = useInstallments(loans, clients);
+  const { installments, markInstallmentAsPaid: updateInstallmentStatus } = useInstallments(loans, clients, paidInstallments);
   const stats = useStats(loans, installments);
+
+  // Carrega parcelas pagas do localStorage
+  useEffect(() => {
+    if (user) {
+      const storageKey = `paidInstallments_${user.id}`;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          setPaidInstallments(JSON.parse(saved));
+        } catch (error) {
+          console.error('Error loading paid installments:', error);
+        }
+      }
+    }
+  }, [user]);
+
+  // Salva parcelas pagas no localStorage
+  const savePaidInstallments = (installmentIds: string[]) => {
+    if (user) {
+      const storageKey = `paidInstallments_${user.id}`;
+      localStorage.setItem(storageKey, JSON.stringify(installmentIds));
+    }
+  };
 
   // Load data from Supabase
   useEffect(() => {
@@ -57,6 +80,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       setClients([]);
       setLoans([]);
+      setPaidInstallments([]);
       setLoading(false);
     }
   }, [user]);
@@ -98,6 +122,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await supabase.from('loans').delete().eq('user_id', user.id);
       await supabase.from('clients').delete().eq('user_id', user.id);
+
+      // Limpa também as parcelas pagas
+      setPaidInstallments([]);
+      const storageKey = `paidInstallments_${user.id}`;
+      localStorage.removeItem(storageKey);
 
       await loadClients();
       await loadLoans();
@@ -168,6 +197,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!loan) return;
 
       await loanService.deleteLoan(user!.id, loanId);
+      
+      // Remove parcelas pagas relacionadas ao empréstimo excluído
+      const updatedPaidInstallments = paidInstallments.filter(id => !id.startsWith(loanId));
+      setPaidInstallments(updatedPaidInstallments);
+      savePaidInstallments(updatedPaidInstallments);
+      
       await loadLoans();
       
       toast({
@@ -231,6 +266,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const client = clients.find(c => c.id === id);
       if (!client) return;
 
+      // Remove parcelas pagas de empréstimos do cliente excluído
+      const clientLoans = loans.filter(l => l.clientId === id);
+      const loanIds = clientLoans.map(l => l.id);
+      const updatedPaidInstallments = paidInstallments.filter(installmentId => {
+        const loanId = installmentId.split('-')[0];
+        return !loanIds.includes(loanId);
+      });
+      setPaidInstallments(updatedPaidInstallments);
+      savePaidInstallments(updatedPaidInstallments);
+
       await clientService.deleteClient(user!.id, id);
       await loadClients();
       await loadLoans();
@@ -251,7 +296,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const handleMarkInstallmentAsPaid = (id: string) => {
-    markInstallmentAsPaid(id);
+    // Atualiza o estado local das parcelas
+    updateInstallmentStatus(id);
+    
+    // Atualiza a lista de parcelas pagas persistidas
+    const newPaidInstallments = [...paidInstallments, id];
+    setPaidInstallments(newPaidInstallments);
+    savePaidInstallments(newPaidInstallments);
+    
     toast({
       title: "Parcela marcada como paga",
       description: "A parcela foi atualizada com sucesso."

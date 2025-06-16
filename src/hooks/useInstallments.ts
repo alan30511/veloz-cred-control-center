@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Installment } from '@/types/installment';
 import { Loan, Client } from '@/types/loan';
 
-export const useInstallments = (loans: Loan[], clients: Client[]) => {
+export const useInstallments = (loans: Loan[], clients: Client[], paidInstallments: string[] = []) => {
   const [installments, setInstallments] = useState<Installment[]>([]);
 
   const generateInstallments = () => {
@@ -21,11 +21,17 @@ export const useInstallments = (loans: Loan[], clients: Client[]) => {
         const dueDate = new Date(firstPaymentDate);
         dueDate.setMonth(dueDate.getMonth() + (i - 1));
         
+        const installmentId = `${loan.id}-${i}`;
+        
+        // Verifica se esta parcela já foi marcada como paga
+        const isPaid = paidInstallments.includes(installmentId);
+        
         let status: "pending" | "paid" | "overdue" = "pending";
         let lateFee = 0;
         
-        // Remove a marcação automática como pago da primeira parcela
-        if (dueDate < today) {
+        if (isPaid) {
+          status = "paid";
+        } else if (dueDate < today) {
           status = "overdue";
           // Calcula multa: R$ 10,00 por dia de atraso
           const diffTime = today.getTime() - dueDate.getTime();
@@ -36,7 +42,7 @@ export const useInstallments = (loans: Loan[], clients: Client[]) => {
         const totalAmount = loan.monthlyPayment + lateFee;
         
         newInstallments.push({
-          id: `${loan.id}-${i}`,
+          id: installmentId,
           loanId: loan.id,
           clientName: loan.clientName,
           clientWhatsapp: client.phone || "(11) 99999-9999",
@@ -46,7 +52,8 @@ export const useInstallments = (loans: Loan[], clients: Client[]) => {
           dueDate: dueDate.toISOString().split('T')[0],
           status,
           lateFee,
-          totalAmount
+          totalAmount,
+          paidDate: isPaid ? new Date().toISOString().split('T')[0] : undefined
         });
       }
     });
@@ -56,7 +63,7 @@ export const useInstallments = (loans: Loan[], clients: Client[]) => {
 
   useEffect(() => {
     generateInstallments();
-  }, [loans, clients]);
+  }, [loans, clients, paidInstallments]);
 
   const markInstallmentAsPaid = (id: string) => {
     setInstallments(prev => prev.map(installment => 
