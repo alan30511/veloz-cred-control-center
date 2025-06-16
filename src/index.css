@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -37,47 +38,32 @@
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
-
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
-
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
@@ -99,5 +85,159 @@
 
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
+
+  html {
+    /* Smooth scrolling for better UX */
+    scroll-behavior: smooth;
+  }
+
+  /* Mobile-first optimizations */
+  @media (max-width: 768px) {
+    body {
+      font-size: 16px; /* Prevent zoom on iOS */
+      -webkit-text-size-adjust: 100%;
+    }
+    
+    /* Better touch targets */
+    button, input, select, textarea {
+      min-height: 44px;
+    }
+    
+    /* Safe area for mobile devices */
+    .safe-area-pb {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .safe-area-pt {
+      padding-top: env(safe-area-inset-top);
+    }
+  }
+}
+
+@layer components {
+  /* Mobile-optimized animations */
+  .mobile-fade-in {
+    animation: mobileSlideUp 0.3s ease-out;
+  }
+  
+  .mobile-slide-up {
+    animation: mobileSlideUp 0.2s ease-out;
+  }
+  
+  /* Touch-friendly components */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+  
+  /* Optimized shadows for mobile */
+  .mobile-shadow {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .mobile-shadow-lg {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+}
+
+@layer utilities {
+  /* Mobile-specific utilities */
+  .text-mobile-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  .text-mobile-base {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+  
+  .text-mobile-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+  
+  /* Performance optimizations */
+  .will-change-transform {
+    will-change: transform;
+  }
+  
+  .will-change-opacity {
+    will-change: opacity;
+  }
+  
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  
+  /* Custom scrollbar for webkit browsers */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 2px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 2px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+}
+
+@keyframes mobileSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive typography */
+@media (min-width: 640px) {
+  .responsive-text-sm { font-size: 0.875rem; }
+  .responsive-text-base { font-size: 1rem; }
+  .responsive-text-lg { font-size: 1.125rem; }
+  .responsive-text-xl { font-size: 1.25rem; }
+}
+
+@media (max-width: 639px) {
+  .responsive-text-sm { font-size: 0.8125rem; }
+  .responsive-text-base { font-size: 0.9375rem; }
+  .responsive-text-lg { font-size: 1rem; }
+  .responsive-text-xl { font-size: 1.125rem; }
+}
+
+/* Focus improvements for accessibility */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+/* Improved contrast for better readability */
+.high-contrast {
+  color: #000;
+  background-color: #fff;
+}
+
+/* Mobile-specific grid improvements */
+@media (max-width: 768px) {
+  .mobile-grid-1 { grid-template-columns: 1fr; }
+  .mobile-grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .mobile-grid-auto { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 }
