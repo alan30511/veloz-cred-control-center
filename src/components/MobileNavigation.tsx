@@ -26,7 +26,7 @@ const MobileNavigation = ({
     label: "Config",
     icon: Settings
   }];
-  return <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 px-2 py-1 z-50 safe-area-pb bg-cyan-200">
+  return <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 px-2 py-1 z-50 safe-area-pb bg-emerald-400">
       <div className="flex justify-around items-center max-w-md mx-auto">
         {navItems.map(item => {
         const Icon = item.icon;
