@@ -35,12 +35,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Check subscription status when user logs in
-        if (session?.user && event === 'SIGNED_IN') {
+        // Only clear cache when user logs out - don't make automatic API calls
+        if (event === 'SIGNED_OUT' && !session?.user) {
+          // Clear subscription cache when user logs out
           try {
-            await supabase.functions.invoke('check-subscription');
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+              if (key.startsWith('subscription_cache_')) {
+                localStorage.removeItem(key);
+              }
+            });
           } catch (error) {
-            console.error('Error checking subscription on login:', error);
+            console.error('Error clearing subscription cache:', error);
           }
         }
       }
@@ -51,13 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      
-      // Check subscription status for existing session
-      if (session?.user) {
-        supabase.functions.invoke('check-subscription').catch(error => {
-          console.error('Error checking subscription on init:', error);
-        });
-      }
+      // Removed automatic subscription check on session load
     });
 
     return () => subscription.unsubscribe();

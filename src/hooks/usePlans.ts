@@ -1,10 +1,10 @@
 
 import { useState } from "react";
 import { Plan, UserPlan } from "@/types/plan";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useOptimizedSubscription } from "@/hooks/useOptimizedSubscription";
 
 export const usePlans = () => {
-  const { subscription } = useSubscription();
+  const { subscription } = useOptimizedSubscription();
   
   const plans: Plan[] = [
     {
