@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Home, Users, MessageSquare, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,7 @@ const MobileNavigation = ({
     icon: Users
   }, {
     id: "installments",
-    label: "Parcelas",
+    label: "Empréstimos",
     icon: MessageSquare
   }, {
     id: "settings",
