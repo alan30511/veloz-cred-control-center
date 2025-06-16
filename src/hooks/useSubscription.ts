@@ -27,14 +27,19 @@ export const useSubscription = () => {
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Subscription check error:', error);
+        throw new Error('Failed to check subscription status');
+      }
       
-      setSubscription(data);
+      if (data && typeof data === 'object') {
+        setSubscription(data);
+      }
     } catch (error) {
       console.error('Error checking subscription:', error);
       toast({
         title: "Erro",
-        description: "Erro ao verificar assinatura",
+        description: "Não foi possível verificar o status da assinatura",
         variant: "destructive"
       });
     } finally {
@@ -43,23 +48,52 @@ export const useSubscription = () => {
   };
 
   const createCheckout = async (planId: string) => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Faça login para continuar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Input validation
+    if (!planId || typeof planId !== 'string' || planId.trim().length === 0) {
+      toast({
+        title: "Erro",
+        description: "Plano inválido selecionado",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { planId }
+        body: { planId: planId.trim() }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Checkout creation error:', error);
+        throw new Error('Failed to create checkout session');
+      }
       
-      // Open Stripe checkout in a new tab
-      window.open(data.url, '_blank');
+      if (data?.url && typeof data.url === 'string') {
+        // Validate URL before opening
+        try {
+          new URL(data.url);
+          window.open(data.url, '_blank');
+        } catch {
+          throw new Error('Invalid checkout URL received');
+        }
+      } else {
+        throw new Error('Invalid response from payment service');
+      }
     } catch (error) {
       console.error('Error creating checkout:', error);
       toast({
         title: "Erro",
-        description: "Erro ao criar sessão de pagamento",
+        description: "Não foi possível processar o pagamento. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -68,21 +102,40 @@ export const useSubscription = () => {
   };
 
   const openCustomerPortal = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Faça login para continuar",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Customer portal error:', error);
+        throw new Error('Failed to access customer portal');
+      }
       
-      // Open customer portal in a new tab
-      window.open(data.url, '_blank');
+      if (data?.url && typeof data.url === 'string') {
+        // Validate URL before opening
+        try {
+          new URL(data.url);
+          window.open(data.url, '_blank');
+        } catch {
+          throw new Error('Invalid portal URL received');
+        }
+      } else {
+        throw new Error('Invalid response from portal service');
+      }
     } catch (error) {
       console.error('Error opening customer portal:', error);
       toast({
         title: "Erro",
-        description: "Erro ao abrir portal do cliente",
+        description: "Não foi possível acessar o portal do cliente. Tente novamente.",
         variant: "destructive"
       });
     } finally {

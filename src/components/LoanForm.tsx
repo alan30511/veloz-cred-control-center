@@ -12,6 +12,8 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Client, LoanFormData } from "@/types/loan";
 import { calculateLoanDetails } from "@/utils/loanCalculations";
+import { validateLoanAmount, validateInterestRate, validateInstallments } from "@/utils/inputValidation";
+import { ValidationMessage } from "@/components/InputValidation";
 
 interface LoanFormProps {
   clients: Client[];
@@ -29,8 +31,45 @@ const LoanForm = ({ clients, onSubmit, onCancel }: LoanFormProps) => {
     firstPaymentDate: new Date()
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.clientId) {
+      newErrors.clientId = "Selecione um cliente";
+    }
+
+    const amount = parseFloat(formData.amount);
+    if (!formData.amount || isNaN(amount) || !validateLoanAmount(amount)) {
+      newErrors.amount = "Digite um valor entre R$ 0,01 e R$ 1.000.000";
+    }
+
+    const interestRate = parseFloat(formData.interestRate);
+    if (!formData.interestRate || isNaN(interestRate) || !validateInterestRate(interestRate)) {
+      newErrors.interestRate = "Digite uma taxa entre 0% e 100%";
+    }
+
+    const installments = parseInt(formData.installments);
+    if (!formData.installments || isNaN(installments) || !validateInstallments(installments)) {
+      newErrors.installments = "Digite um número entre 1 e 60 parcelas";
+    }
+
+    if (formData.firstPaymentDate < formData.loanDate) {
+      newErrors.firstPaymentDate = "Data do primeiro vencimento não pode ser anterior à data do empréstimo";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
     onSubmit(formData);
     setFormData({
       clientId: "",
@@ -40,6 +79,49 @@ const LoanForm = ({ clients, onSubmit, onCancel }: LoanFormProps) => {
       loanDate: new Date(),
       firstPaymentDate: new Date()
     });
+    setErrors({});
+  };
+
+  const handleAmountChange = (value: string) => {
+    // Remove non-numeric characters except decimal point
+    const cleanValue = value.replace(/[^0-9.,]/g, '').replace(',', '.');
+    setFormData({...formData, amount: cleanValue});
+    
+    if (errors.amount) {
+      const amount = parseFloat(cleanValue);
+      if (!isNaN(amount) && validateLoanAmount(amount)) {
+        const { amount: _, ...restErrors } = errors;
+        setErrors(restErrors);
+      }
+    }
+  };
+
+  const handleInterestRateChange = (value: string) => {
+    // Remove non-numeric characters except decimal point
+    const cleanValue = value.replace(/[^0-9.,]/g, '').replace(',', '.');
+    setFormData({...formData, interestRate: cleanValue});
+    
+    if (errors.interestRate) {
+      const rate = parseFloat(cleanValue);
+      if (!isNaN(rate) && validateInterestRate(rate)) {
+        const { interestRate: _, ...restErrors } = errors;
+        setErrors(restErrors);
+      }
+    }
+  };
+
+  const handleInstallmentsChange = (value: string) => {
+    // Only allow integers
+    const cleanValue = value.replace(/[^0-9]/g, '');
+    setFormData({...formData, installments: cleanValue});
+    
+    if (errors.installments) {
+      const installments = parseInt(cleanValue);
+      if (!isNaN(installments) && validateInstallments(installments)) {
+        const { installments: _, ...restErrors } = errors;
+        setErrors(restErrors);
+      }
+    }
   };
 
   const previewCalculation = () => {
@@ -48,6 +130,8 @@ const LoanForm = ({ clients, onSubmit, onCancel }: LoanFormProps) => {
     const amount = parseFloat(formData.amount);
     const interestRate = parseFloat(formData.interestRate);
     const installments = parseInt(formData.installments);
+    
+    if (isNaN(amount) || isNaN(interestRate) || isNaN(installments)) return null;
     
     const { totalAmount, monthlyPayment } = calculateLoanDetails(amount, interestRate, installments);
     
@@ -85,8 +169,14 @@ const LoanForm = ({ clients, onSubmit, onCancel }: LoanFormProps) => {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="client">Cliente</Label>
-              <Select value={formData.clientId} onValueChange={(value) => setFormData({...formData, clientId: value})}>
-                <SelectTrigger>
+              <Select value={formData.clientId} onValueChange={(value) => {
+                setFormData({...formData, clientId: value});
+                if (errors.clientId) {
+                  const { clientId: _, ...restErrors } = errors;
+                  setErrors(restErrors);
+                }
+              }}>
+                <SelectTrigger className={errors.clientId ? 'border-red-500' : ''}>
                   <SelectValue placeholder="Selecione um cliente" />
                 </SelectTrigger>
                 <SelectContent>
@@ -97,43 +187,49 @@ const LoanForm = ({ clients, onSubmit, onCancel }: LoanFormProps) => {
                   ))}
                 </SelectContent>
               </Select>
+              {errors.clientId && <ValidationMessage message={errors.clientId} />}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="amount">Valor do Empréstimo (R$)</Label>
               <Input
                 id="amount"
-                type="number"
+                type="text"
                 value={formData.amount}
-                onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                onChange={(e) => handleAmountChange(e.target.value)}
                 placeholder="5000"
+                className={errors.amount ? 'border-red-500' : ''}
                 required
               />
+              {errors.amount && <ValidationMessage message={errors.amount} />}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="interestRate">Taxa de Juros Mensal (%)</Label>
               <Input
                 id="interestRate"
-                type="number"
-                step="0.1"
+                type="text"
                 value={formData.interestRate}
-                onChange={(e) => setFormData({...formData, interestRate: e.target.value})}
+                onChange={(e) => handleInterestRateChange(e.target.value)}
                 placeholder="20"
+                className={errors.interestRate ? 'border-red-500' : ''}
                 required
               />
+              {errors.interestRate && <ValidationMessage message={errors.interestRate} />}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="installments">Número de Parcelas</Label>
               <Input
                 id="installments"
-                type="number"
+                type="text"
                 value={formData.installments}
-                onChange={(e) => setFormData({...formData, installments: e.target.value})}
+                onChange={(e) => handleInstallmentsChange(e.target.value)}
                 placeholder="10"
+                className={errors.installments ? 'border-red-500' : ''}
                 required
               />
+              {errors.installments && <ValidationMessage message={errors.installments} />}
             </div>
 
             <div className="space-y-2">
@@ -171,7 +267,8 @@ const LoanForm = ({ clients, onSubmit, onCancel }: LoanFormProps) => {
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
-                      !formData.firstPaymentDate && "text-muted-foreground"
+                      !formData.firstPaymentDate && "text-muted-foreground",
+                      errors.firstPaymentDate && "border-red-500"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -182,12 +279,19 @@ const LoanForm = ({ clients, onSubmit, onCancel }: LoanFormProps) => {
                   <Calendar
                     mode="single"
                     selected={formData.firstPaymentDate}
-                    onSelect={(date) => setFormData({...formData, firstPaymentDate: date || new Date()})}
+                    onSelect={(date) => {
+                      setFormData({...formData, firstPaymentDate: date || new Date()});
+                      if (errors.firstPaymentDate) {
+                        const { firstPaymentDate: _, ...restErrors } = errors;
+                        setErrors(restErrors);
+                      }
+                    }}
                     initialFocus
                     className="p-3 pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
+              {errors.firstPaymentDate && <ValidationMessage message={errors.firstPaymentDate} />}
             </div>
           </div>
 
