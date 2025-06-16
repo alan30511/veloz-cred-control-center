@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,10 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const { plans, userPlan, changePlan } = usePlans();
   const { calculateStats, loading, clearAllData } = useAppContext();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+
+  // Get real-time stats from app context
+  const stats = calculateStats();
 
   const handlePlanChange = (planId: string) => {
     changePlan(planId);
@@ -44,9 +46,6 @@ const Index = () => {
       </div>
     );
   }
-
-  // Get real-time stats from app context
-  const stats = calculateStats();
 
   const renderActiveComponent = () => {
     switch (activeTab) {
