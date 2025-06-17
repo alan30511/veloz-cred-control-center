@@ -20,8 +20,7 @@ export const loanService = {
         .from('loans')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false }),
-      10000
+        .order('created_at', { ascending: false })
     );
 
     if (error) {
@@ -66,8 +65,7 @@ export const loanService = {
           loan_date: formData.loanDate.toISOString().split('T')[0],
           first_payment_date: formData.firstPaymentDate.toISOString().split('T')[0],
           status: 'active'
-        }),
-      10000
+        })
     );
 
     if (error) {
@@ -89,8 +87,7 @@ export const loanService = {
           updated_at: new Date().toISOString()
         })
         .eq('id', loanId)
-        .eq('user_id', userId),
-      10000
+        .eq('user_id', userId)
     );
 
     if (error) {
@@ -105,8 +102,7 @@ export const loanService = {
         .from('loans')
         .delete()
         .eq('id', loanId)
-        .eq('user_id', userId),
-      10000
+        .eq('user_id', userId)
     );
 
     if (error) {

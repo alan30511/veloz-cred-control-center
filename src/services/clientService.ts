@@ -19,8 +19,7 @@ export const clientService = {
         .from('clients')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false }),
-      10000
+        .order('created_at', { ascending: false })
     );
 
     if (error) {
@@ -47,8 +46,7 @@ export const clientService = {
           cpf: clientData.cpf,
           phone: clientData.phone,
           address: clientData.address
-        }),
-      10000
+        })
     );
 
     if (error) {
@@ -69,8 +67,7 @@ export const clientService = {
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
-        .eq('user_id', userId),
-      10000
+        .eq('user_id', userId)
     );
 
     if (error) {
@@ -87,8 +84,7 @@ export const clientService = {
           updated_at: new Date().toISOString()
         })
         .eq('client_id', id)
-        .eq('user_id', userId),
-      10000
+        .eq('user_id', userId)
     );
   },
 
@@ -99,8 +95,7 @@ export const clientService = {
         .from('loans')
         .delete()
         .eq('client_id', id)
-        .eq('user_id', userId),
-      10000
+        .eq('user_id', userId)
     );
 
     if (loansError) {
@@ -114,8 +109,7 @@ export const clientService = {
         .from('clients')
         .delete()
         .eq('id', id)
-        .eq('user_id', userId),
-      10000
+        .eq('user_id', userId)
     );
 
     if (clientError) {
