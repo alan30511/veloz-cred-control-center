@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Loan, Client, LoanFormData } from '@/types/loan';
 import { Installment } from '@/types/installment';
 import { useToast } from '@/hooks/use-toast';
@@ -49,46 +49,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const { installments, markInstallmentAsPaid: updateInstallmentStatus } = useInstallments(loans, clients, paidInstallments);
   const stats = useStats(loans, installments);
 
-  // Carrega parcelas pagas do localStorage
+  // Memoize storage key to avoid recalculation
+  const storageKey = useMemo(() => 
+    user ? `paidInstallments_${user.id}` : null, 
+    [user?.id]
+  );
+
+  // Load paid installments from localStorage
   useEffect(() => {
-    if (user) {
-      const storageKey = `paidInstallments_${user.id}`;
+    if (storageKey) {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         try {
           setPaidInstallments(JSON.parse(saved));
         } catch (error) {
           console.error('Error loading paid installments:', error);
+          setPaidInstallments([]);
         }
       }
     }
-  }, [user]);
+  }, [storageKey]);
 
-  // Salva parcelas pagas no localStorage
-  const savePaidInstallments = (installmentIds: string[]) => {
-    if (user) {
-      const storageKey = `paidInstallments_${user.id}`;
+  // Memoize save function to avoid recreation
+  const savePaidInstallments = useCallback((installmentIds: string[]) => {
+    if (storageKey) {
       localStorage.setItem(storageKey, JSON.stringify(installmentIds));
     }
-  };
+  }, [storageKey]);
 
-  // Load data from Supabase
-  useEffect(() => {
-    if (user) {
-      loadClients();
-      loadLoans();
-    } else {
-      setClients([]);
-      setLoans([]);
-      setPaidInstallments([]);
-      setLoading(false);
-    }
-  }, [user]);
-
-  const loadClients = async () => {
+  // Optimized data loading functions
+  const loadClients = useCallback(async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
-      const formattedClients = await clientService.loadClients(user!.id);
+      const formattedClients = await clientService.loadClients(user.id);
       setClients(formattedClients);
     } catch (error) {
       console.error('Error loading clients:', error);
@@ -100,11 +95,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, toast]);
 
-  const loadLoans = async () => {
+  const loadLoans = useCallback(async () => {
+    if (!user) return;
+    
     try {
-      const formattedLoans = await loanService.loadLoans(user!.id);
+      const formattedLoans = await loanService.loadLoans(user.id);
       setLoans(formattedLoans);
     } catch (error) {
       console.error('Error loading loans:', error);
@@ -114,7 +111,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         variant: "destructive"
       });
     }
-  };
+  }, [user?.id, toast]);
+
+  // Load data from Supabase only when user changes
+  useEffect(() => {
+    if (user) {
+      loadClients();
+      loadLoans();
+    } else {
+      setClients([]);
+      setLoans([]);
+      setPaidInstallments([]);
+      setLoading(false);
+    }
+  }, [user, loadClients, loadLoans]);
 
   const clearAllData = async () => {
     if (!user) return;
@@ -123,10 +133,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await supabase.from('loans').delete().eq('user_id', user.id);
       await supabase.from('clients').delete().eq('user_id', user.id);
 
-      // Limpa também as parcelas pagas
       setPaidInstallments([]);
-      const storageKey = `paidInstallments_${user.id}`;
-      localStorage.removeItem(storageKey);
+      if (storageKey) {
+        localStorage.removeItem(storageKey);
+      }
 
       await loadClients();
       await loadLoans();
@@ -198,7 +208,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await loanService.deleteLoan(user!.id, loanId);
       
-      // Remove parcelas pagas relacionadas ao empréstimo excluído
       const updatedPaidInstallments = paidInstallments.filter(id => !id.startsWith(loanId));
       setPaidInstallments(updatedPaidInstallments);
       savePaidInstallments(updatedPaidInstallments);
@@ -266,7 +275,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const client = clients.find(c => c.id === id);
       if (!client) return;
 
-      // Remove parcelas pagas de empréstimos do cliente excluído
       const clientLoans = loans.filter(l => l.clientId === id);
       const loanIds = clientLoans.map(l => l.id);
       const updatedPaidInstallments = paidInstallments.filter(installmentId => {
@@ -295,11 +303,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const handleMarkInstallmentAsPaid = (id: string) => {
-    // Atualiza o estado local das parcelas
+  const handleMarkInstallmentAsPaid = useCallback((id: string) => {
     updateInstallmentStatus(id);
     
-    // Atualiza a lista de parcelas pagas persistidas
     const newPaidInstallments = [...paidInstallments, id];
     setPaidInstallments(newPaidInstallments);
     savePaidInstallments(newPaidInstallments);
@@ -308,9 +314,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       title: "Parcela marcada como paga",
       description: "A parcela foi atualizada com sucesso."
     });
-  };
+  }, [updateInstallmentStatus, paidInstallments, savePaidInstallments, toast]);
 
-  const handleGenerateReport = () => {
+  const handleGenerateReport = useCallback(() => {
     try {
       generateReport(clients, loans, installments, stats);
       toast({
@@ -325,9 +331,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         variant: "destructive"
       });
     }
-  };
+  }, [clients, loans, installments, stats, toast]);
 
-  const value = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     loans,
     clients,
     installments,
@@ -342,7 +349,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     calculateStats: () => stats,
     generateReport: handleGenerateReport,
     clearAllData
-  };
+  }), [
+    loans,
+    clients,
+    installments,
+    loading,
+    stats,
+    handleMarkInstallmentAsPaid,
+    handleGenerateReport
+  ]);
 
   return (
     <AppContext.Provider value={value}>

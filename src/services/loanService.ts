@@ -3,15 +3,30 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loan, LoanFormData } from '@/types/loan';
 import { calculateLoanDetails } from '@/utils/loanCalculations';
 
+// Add timeout and retry logic
+const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout')), ms)
+    )
+  ]);
+};
+
 export const loanService = {
   async loadLoans(userId: string): Promise<Loan[]> {
-    const { data, error } = await supabase
-      .from('loans')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    const { data, error } = await withTimeout(
+      supabase
+        .from('loans')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+    );
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error loading loans:', error);
+      throw error;
+    }
     
     return data?.map(loan => ({
       id: loan.id,
@@ -35,48 +50,64 @@ export const loanService = {
 
     const { totalAmount, monthlyPayment } = calculateLoanDetails(amount, interestRate, installmentsCount);
 
-    const { error } = await supabase
-      .from('loans')
-      .insert({
-        user_id: userId,
-        client_id: formData.clientId,
-        client_name: clientName,
-        amount,
-        interest_rate: interestRate,
-        installments: installmentsCount,
-        total_amount: totalAmount,
-        monthly_payment: monthlyPayment,
-        loan_date: formData.loanDate.toISOString().split('T')[0],
-        first_payment_date: formData.firstPaymentDate.toISOString().split('T')[0],
-        status: 'active'
-      });
+    const { error } = await withTimeout(
+      supabase
+        .from('loans')
+        .insert({
+          user_id: userId,
+          client_id: formData.clientId,
+          client_name: clientName,
+          amount,
+          interest_rate: interestRate,
+          installments: installmentsCount,
+          total_amount: totalAmount,
+          monthly_payment: monthlyPayment,
+          loan_date: formData.loanDate.toISOString().split('T')[0],
+          first_payment_date: formData.firstPaymentDate.toISOString().split('T')[0],
+          status: 'active'
+        })
+    );
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error creating loan:', error);
+      throw error;
+    }
   },
 
   async editLoanRate(userId: string, loanId: string, amount: number, newRate: number, installments: number): Promise<void> {
     const { totalAmount, monthlyPayment } = calculateLoanDetails(amount, newRate, installments);
 
-    const { error } = await supabase
-      .from('loans')
-      .update({
-        interest_rate: newRate,
-        total_amount: totalAmount,
-        monthly_payment: monthlyPayment
-      })
-      .eq('id', loanId)
-      .eq('user_id', userId);
+    const { error } = await withTimeout(
+      supabase
+        .from('loans')
+        .update({
+          interest_rate: newRate,
+          total_amount: totalAmount,
+          monthly_payment: monthlyPayment,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', loanId)
+        .eq('user_id', userId)
+    );
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error updating loan rate:', error);
+      throw error;
+    }
   },
 
   async deleteLoan(userId: string, loanId: string): Promise<void> {
-    const { error } = await supabase
-      .from('loans')
-      .delete()
-      .eq('id', loanId)
-      .eq('user_id', userId);
+    const { error } = await withTimeout(
+      supabase
+        .from('loans')
+        .delete()
+        .eq('id', loanId)
+        .eq('user_id', userId)
+    );
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database error deleting loan:', error);
+      throw error;
+    }
   }
 };

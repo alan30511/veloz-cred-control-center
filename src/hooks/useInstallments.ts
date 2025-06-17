@@ -1,18 +1,31 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Installment } from '@/types/installment';
 import { Loan, Client } from '@/types/loan';
 
 export const useInstallments = (loans: Loan[], clients: Client[], paidInstallments: string[] = []) => {
   const [installments, setInstallments] = useState<Installment[]>([]);
 
-  const generateInstallments = () => {
+  // Memoize clients lookup for better performance
+  const clientsMap = useMemo(() => {
+    return clients.reduce((acc, client) => {
+      acc[client.id] = client;
+      return acc;
+    }, {} as Record<string, Client>);
+  }, [clients]);
+
+  // Memoize paid installments set for faster lookup
+  const paidInstallmentsSet = useMemo(() => {
+    return new Set(paidInstallments);
+  }, [paidInstallments]);
+
+  const generateInstallments = useMemo(() => {
     const newInstallments: Installment[] = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     loans.forEach(loan => {
-      const client = clients.find(c => c.id === loan.clientId);
+      const client = clientsMap[loan.clientId];
       if (!client) return;
 
       const firstPaymentDate = new Date(loan.firstPaymentDate || loan.loanDate);
@@ -23,8 +36,8 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
         
         const installmentId = `${loan.id}-${i}`;
         
-        // Verifica se esta parcela já foi marcada como paga
-        const isPaid = paidInstallments.includes(installmentId);
+        // Use Set for faster lookup
+        const isPaid = paidInstallmentsSet.has(installmentId);
         
         let status: "pending" | "paid" | "overdue" = "pending";
         let lateFee = 0;
@@ -33,7 +46,7 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
           status = "paid";
         } else if (dueDate < today) {
           status = "overdue";
-          // Calcula multa: R$ 10,00 por dia de atraso
+          // Calculate late fee: R$ 10,00 per day overdue
           const diffTime = today.getTime() - dueDate.getTime();
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
           lateFee = diffDays * 10;
@@ -58,12 +71,12 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
       }
     });
     
-    setInstallments(newInstallments);
-  };
+    return newInstallments;
+  }, [loans, clientsMap, paidInstallmentsSet]);
 
   useEffect(() => {
-    generateInstallments();
-  }, [loans, clients, paidInstallments]);
+    setInstallments(generateInstallments);
+  }, [generateInstallments]);
 
   const markInstallmentAsPaid = (id: string) => {
     setInstallments(prev => prev.map(installment => 
