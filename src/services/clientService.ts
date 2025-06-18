@@ -14,13 +14,14 @@ const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => 
 
 export const clientService = {
   async loadClients(userId: string): Promise<Client[]> {
-    const query = supabase
-      .from('clients')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    const { data, error } = await withTimeout(query, 10000);
+    const { data, error } = await withTimeout(
+      supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false }),
+      10000
+    );
 
     if (error) {
       console.error('Database error loading clients:', error);
@@ -37,17 +38,18 @@ export const clientService = {
   },
 
   async addClient(userId: string, clientData: Omit<Client, 'id'>): Promise<void> {
-    const query = supabase
-      .from('clients')
-      .insert({
-        user_id: userId,
-        full_name: clientData.fullName,
-        cpf: clientData.cpf,
-        phone: clientData.phone,
-        address: clientData.address
-      });
-
-    const { error } = await withTimeout(query, 10000);
+    const { error } = await withTimeout(
+      supabase
+        .from('clients')
+        .insert({
+          user_id: userId,
+          full_name: clientData.fullName,
+          cpf: clientData.cpf,
+          phone: clientData.phone,
+          address: clientData.address
+        }),
+      10000
+    );
 
     if (error) {
       console.error('Database error adding client:', error);
@@ -56,19 +58,20 @@ export const clientService = {
   },
 
   async editClient(userId: string, id: string, clientData: Omit<Client, 'id'>): Promise<void> {
-    const updateQuery = supabase
-      .from('clients')
-      .update({
-        full_name: clientData.fullName,
-        cpf: clientData.cpf,
-        phone: clientData.phone,
-        address: clientData.address,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .eq('user_id', userId);
-
-    const { error } = await withTimeout(updateQuery, 10000);
+    const { error } = await withTimeout(
+      supabase
+        .from('clients')
+        .update({
+          full_name: clientData.fullName,
+          cpf: clientData.cpf,
+          phone: clientData.phone,
+          address: clientData.address,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('user_id', userId),
+      10000
+    );
 
     if (error) {
       console.error('Database error updating client:', error);
@@ -76,27 +79,29 @@ export const clientService = {
     }
 
     // Update client name in loans table as well
-    const loansUpdateQuery = supabase
-      .from('loans')
-      .update({
-        client_name: clientData.fullName,
-        updated_at: new Date().toISOString()
-      })
-      .eq('client_id', id)
-      .eq('user_id', userId);
-
-    await withTimeout(loansUpdateQuery, 10000);
+    await withTimeout(
+      supabase
+        .from('loans')
+        .update({
+          client_name: clientData.fullName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('client_id', id)
+        .eq('user_id', userId),
+      10000
+    );
   },
 
   async deleteClient(userId: string, id: string): Promise<void> {
     // First delete all loans associated with this client
-    const deleteLoansQuery = supabase
-      .from('loans')
-      .delete()
-      .eq('client_id', id)
-      .eq('user_id', userId);
-
-    const { error: loansError } = await withTimeout(deleteLoansQuery, 10000);
+    const { error: loansError } = await withTimeout(
+      supabase
+        .from('loans')
+        .delete()
+        .eq('client_id', id)
+        .eq('user_id', userId),
+      10000
+    );
 
     if (loansError) {
       console.error('Database error deleting client loans:', loansError);
@@ -104,13 +109,14 @@ export const clientService = {
     }
 
     // Then delete the client
-    const deleteClientQuery = supabase
-      .from('clients')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
-
-    const { error: clientError } = await withTimeout(deleteClientQuery, 10000);
+    const { error: clientError } = await withTimeout(
+      supabase
+        .from('clients')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId),
+      10000
+    );
 
     if (clientError) {
       console.error('Database error deleting client:', clientError);
