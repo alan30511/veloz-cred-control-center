@@ -21,9 +21,15 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
 
   const generateInstallments = useMemo(() => {
     const newInstallments: Installment[] = [];
-    // Get today's date in the same format as dueDate (YYYY-MM-DD)
     const today = new Date();
-    const todayString = today.toISOString().split('T')[0];
+    today.setHours(0, 0, 0, 0); // Zera hora para comparação
+
+    // Função auxiliar para garantir que a data de vencimento seja um objeto Date
+    const normalizeDate = (input: string | Date): Date => {
+      const date = new Date(input);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    };
     
     loans.forEach(loan => {
       const client = clientsMap[loan.clientId];
@@ -43,17 +49,15 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
         let status: "pending" | "paid" | "overdue" = "pending";
         let lateFee = 0;
         
-        // Convert dueDate to string format for proper comparison
-        const dueDateString = dueDate.toISOString().split('T')[0];
-        
+        const due = normalizeDate(dueDate);
+
         if (isPaid) {
           status = "paid";
-        } else if (dueDateString < todayString) {
+        } else if (due.getTime() < today.getTime()) {
           status = "overdue";
-          // Calculate late fee: R$ 10,00 per day overdue
-          const dueDateObj = new Date(dueDateString);
-          const todayObj = new Date(todayString);
-          const diffTime = todayObj.getTime() - dueDateObj.getTime();
+
+          // Calcula multa de R$ 10 por dia de atraso
+          const diffTime = today.getTime() - due.getTime();
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
           lateFee = diffDays * 10;
         }
@@ -68,7 +72,7 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
           installmentNumber: i,
           totalInstallments: loan.installments,
           amount: loan.monthlyPayment,
-          dueDate: dueDateString,
+          dueDate: dueDate.toISOString().split('T')[0],
           status,
           lateFee,
           totalAmount,
