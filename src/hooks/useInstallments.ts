@@ -21,8 +21,9 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
 
   const generateInstallments = useMemo(() => {
     const newInstallments: Installment[] = [];
+    // Get today's date in the same format as dueDate (YYYY-MM-DD)
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayString = today.toISOString().split('T')[0];
     
     loans.forEach(loan => {
       const client = clientsMap[loan.clientId];
@@ -42,12 +43,17 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
         let status: "pending" | "paid" | "overdue" = "pending";
         let lateFee = 0;
         
+        // Convert dueDate to string format for proper comparison
+        const dueDateString = dueDate.toISOString().split('T')[0];
+        
         if (isPaid) {
           status = "paid";
-        } else if (dueDate < today) {
+        } else if (dueDateString < todayString) {
           status = "overdue";
           // Calculate late fee: R$ 10,00 per day overdue
-          const diffTime = today.getTime() - dueDate.getTime();
+          const dueDateObj = new Date(dueDateString);
+          const todayObj = new Date(todayString);
+          const diffTime = todayObj.getTime() - dueDateObj.getTime();
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
           lateFee = diffDays * 10;
         }
@@ -62,7 +68,7 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
           installmentNumber: i,
           totalInstallments: loan.installments,
           amount: loan.monthlyPayment,
-          dueDate: dueDate.toISOString().split('T')[0],
+          dueDate: dueDateString,
           status,
           lateFee,
           totalAmount,
