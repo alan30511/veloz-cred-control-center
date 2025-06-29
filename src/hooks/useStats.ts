@@ -9,7 +9,7 @@ export const useStats = (loans: Loan[], installments: Installment[]) => {
     const totalLoaned = activeLoans.reduce((sum, loan) => sum + loan.amount, 0);
     const totalReceived = activeLoans.reduce((sum, loan) => sum + (loan.totalAmount - loan.amount), 0);
     const activeClients = new Set(activeLoans.map(loan => loan.clientId)).size;
-    const overduePayments = installments.filter(i => i.status === "pending").length; // Changed from "overdue" to "pending"
+    const overduePayments = installments.filter(i => i.status === "overdue").length;
     
     return {
       totalLoaned,
