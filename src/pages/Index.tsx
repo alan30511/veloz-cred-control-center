@@ -15,7 +15,6 @@ import { usePlans } from "@/hooks/usePlans";
 import { useAppContext } from "@/contexts/AppContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
-
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const {
@@ -222,9 +221,7 @@ const Index = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Pagamentos Atrasados
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Pagamentos Pendentes</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -337,5 +334,4 @@ const Index = () => {
         </>}
     </div>;
 };
-
 export default Index;
