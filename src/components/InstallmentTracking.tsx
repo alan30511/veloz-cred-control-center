@@ -9,7 +9,7 @@ import ClientInstallmentGroup from "./ClientInstallmentGroup";
 
 const InstallmentTracking = () => {
   const { installments, markInstallmentAsPaid } = useAppContext();
-  const [filter, setFilter] = useState<"all" | "pending" | "paid">("all");
+  const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("all");
 
   const filteredInstallments = installments.filter(installment => {
     if (filter === "all") return true;
@@ -33,9 +33,10 @@ const InstallmentTracking = () => {
     total: installments.length,
     paid: installments.filter(i => i.status === "paid").length,
     pending: installments.filter(i => i.status === "pending").length,
+    overdue: installments.filter(i => i.status === "overdue").length,
     totalAmount: installments.reduce((sum, i) => sum + i.amount, 0),
     paidAmount: installments.filter(i => i.status === "paid").reduce((sum, i) => sum + i.amount, 0),
-    totalLateFees: 0
+    totalLateFees: installments.filter(i => i.status === "overdue").reduce((sum, i) => sum + (i.lateFee || 0), 0)
   };
 
   return (
@@ -48,7 +49,8 @@ const InstallmentTracking = () => {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-blue-600" />
               <p className="text-sm text-blue-800">
-                <strong>Informação:</strong> Use o botão "Confirmar Pagamento" para marcar parcelas como pagas.
+                <strong>Informação:</strong> Use o botão "Confirmar Pagamento" para marcar parcelas como pagas. 
+                Parcelas em atraso têm multa de R$ 10 por dia.
               </p>
             </div>
           </div>

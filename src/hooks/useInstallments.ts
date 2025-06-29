@@ -37,12 +37,23 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
         // Use Set for faster lookup
         const isPaid = paidInstallmentsSet.has(installmentId);
         
-        // Simplified status logic - only paid or pending
-        let status: "pending" | "paid" = "pending";
+        // Check if installment is overdue
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDateOnly = new Date(dueDate);
+        dueDateOnly.setHours(0, 0, 0, 0);
+        
+        let status: "pending" | "paid" | "overdue" = "pending";
         
         if (isPaid) {
           status = "paid";
+        } else if (dueDateOnly < today) {
+          status = "overdue";
         }
+
+        // Calculate late fee for overdue installments (R$ 10 per day)
+        const daysDiff = Math.ceil((today.getTime() - dueDateOnly.getTime()) / (1000 * 60 * 60 * 24));
+        const lateFee = status === "overdue" ? daysDiff * 10 : 0;
         
         newInstallments.push({
           id: installmentId,
@@ -54,8 +65,8 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
           amount: loan.monthlyPayment,
           dueDate: dueDate.toISOString().split('T')[0],
           status,
-          lateFee: 0,
-          totalAmount: loan.monthlyPayment,
+          lateFee,
+          totalAmount: loan.monthlyPayment + lateFee,
           paidDate: isPaid ? new Date().toISOString().split('T')[0] : undefined
         });
       }

@@ -15,14 +15,13 @@ const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => 
 
 export const loanService = {
   async loadLoans(userId: string): Promise<Loan[]> {
-    const { data, error } = await withTimeout(
-      supabase
-        .from('loans')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false }),
-      10000
-    );
+    const query = supabase
+      .from('loans')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    const { data, error } = await withTimeout(query);
 
     if (error) {
       console.error('Database error loading loans:', error);
@@ -51,24 +50,23 @@ export const loanService = {
 
     const { totalAmount, monthlyPayment } = calculateLoanDetails(amount, interestRate, installmentsCount);
 
-    const { error } = await withTimeout(
-      supabase
-        .from('loans')
-        .insert({
-          user_id: userId,
-          client_id: formData.clientId,
-          client_name: clientName,
-          amount,
-          interest_rate: interestRate,
-          installments: installmentsCount,
-          total_amount: totalAmount,
-          monthly_payment: monthlyPayment,
-          loan_date: formData.loanDate.toISOString().split('T')[0],
-          first_payment_date: formData.firstPaymentDate.toISOString().split('T')[0],
-          status: 'active'
-        }),
-      10000
-    );
+    const query = supabase
+      .from('loans')
+      .insert({
+        user_id: userId,
+        client_id: formData.clientId,
+        client_name: clientName,
+        amount,
+        interest_rate: interestRate,
+        installments: installmentsCount,
+        total_amount: totalAmount,
+        monthly_payment: monthlyPayment,
+        loan_date: formData.loanDate.toISOString().split('T')[0],
+        first_payment_date: formData.firstPaymentDate.toISOString().split('T')[0],
+        status: 'active'
+      });
+
+    const { error } = await withTimeout(query);
 
     if (error) {
       console.error('Database error creating loan:', error);
@@ -79,19 +77,18 @@ export const loanService = {
   async editLoanRate(userId: string, loanId: string, amount: number, newRate: number, installments: number): Promise<void> {
     const { totalAmount, monthlyPayment } = calculateLoanDetails(amount, newRate, installments);
 
-    const { error } = await withTimeout(
-      supabase
-        .from('loans')
-        .update({
-          interest_rate: newRate,
-          total_amount: totalAmount,
-          monthly_payment: monthlyPayment,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', loanId)
-        .eq('user_id', userId),
-      10000
-    );
+    const query = supabase
+      .from('loans')
+      .update({
+        interest_rate: newRate,
+        total_amount: totalAmount,
+        monthly_payment: monthlyPayment,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', loanId)
+      .eq('user_id', userId);
+
+    const { error } = await withTimeout(query);
 
     if (error) {
       console.error('Database error updating loan rate:', error);
@@ -100,14 +97,13 @@ export const loanService = {
   },
 
   async deleteLoan(userId: string, loanId: string): Promise<void> {
-    const { error } = await withTimeout(
-      supabase
-        .from('loans')
-        .delete()
-        .eq('id', loanId)
-        .eq('user_id', userId),
-      10000
-    );
+    const query = supabase
+      .from('loans')
+      .delete()
+      .eq('id', loanId)
+      .eq('user_id', userId);
+
+    const { error } = await withTimeout(query);
 
     if (error) {
       console.error('Database error deleting loan:', error);
