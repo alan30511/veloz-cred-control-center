@@ -14,7 +14,8 @@ const withTimeout = <T>(promise: Promise<T>, ms: number = 10000): Promise<T> => 
 
 export const clientService = {
   async loadClients(userId: string): Promise<Client[]> {
-    const { data, error } = await supabase
+    const { data, error } = await withTimeout(
+      supabase
         .from('clients')
         .select('*')
         .eq('user_id', userId)
