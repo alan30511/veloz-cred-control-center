@@ -9,7 +9,7 @@ import ClientInstallmentGroup from "./ClientInstallmentGroup";
 
 const InstallmentTracking = () => {
   const { installments, markInstallmentAsPaid } = useAppContext();
-  const [filter, setFilter] = useState<"all" | "pending" | "paid" | "overdue">("all");
+  const [filter, setFilter] = useState<"all" | "pending" | "paid">("all");
 
   const filteredInstallments = installments.filter(installment => {
     if (filter === "all") return true;
@@ -33,10 +33,9 @@ const InstallmentTracking = () => {
     total: installments.length,
     paid: installments.filter(i => i.status === "paid").length,
     pending: installments.filter(i => i.status === "pending").length,
-    overdue: installments.filter(i => i.status === "overdue").length,
     totalAmount: installments.reduce((sum, i) => sum + i.amount, 0),
     paidAmount: installments.filter(i => i.status === "paid").reduce((sum, i) => sum + i.amount, 0),
-    totalLateFees: installments.reduce((sum, i) => sum + (i.lateFee || 0), 0)
+    totalLateFees: 0
   };
 
   return (
@@ -45,12 +44,11 @@ const InstallmentTracking = () => {
         <div>
           <h2 className="text-2xl font-bold">Acompanhamento de Parcelas</h2>
           <p className="text-muted-foreground">Gerencie pagamentos organizados por cliente</p>
-          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <p className="text-sm text-yellow-800">
-                <strong>Importante:</strong> Parcelas em atraso têm multa de R$ 10,00 por dia. 
-                Use o botão "Confirmar Pagamento" para marcar como pago.
+              <AlertTriangle className="h-4 w-4 text-blue-600" />
+              <p className="text-sm text-blue-800">
+                <strong>Informação:</strong> Use o botão "Confirmar Pagamento" para marcar parcelas como pagas.
               </p>
             </div>
           </div>

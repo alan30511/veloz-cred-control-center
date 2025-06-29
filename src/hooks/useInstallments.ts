@@ -21,15 +21,6 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
 
   const generateInstallments = useMemo(() => {
     const newInstallments: Installment[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Zera hora para comparação
-
-    // Função auxiliar para garantir que a data de vencimento seja um objeto Date
-    const normalizeDate = (input: string | Date): Date => {
-      const date = new Date(input);
-      date.setHours(0, 0, 0, 0);
-      return date;
-    };
     
     loans.forEach(loan => {
       const client = clientsMap[loan.clientId];
@@ -46,23 +37,12 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
         // Use Set for faster lookup
         const isPaid = paidInstallmentsSet.has(installmentId);
         
-        let status: "pending" | "paid" | "overdue" = "pending";
-        let lateFee = 0;
+        // Simplified status logic - only paid or pending
+        let status: "pending" | "paid" = "pending";
         
-        const due = normalizeDate(dueDate);
-
         if (isPaid) {
           status = "paid";
-        } else if (due.getTime() < today.getTime()) {
-          status = "overdue";
-
-          // Calcula multa de R$ 10 por dia de atraso
-          const diffTime = today.getTime() - due.getTime();
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-          lateFee = diffDays * 10;
         }
-        
-        const totalAmount = loan.monthlyPayment + lateFee;
         
         newInstallments.push({
           id: installmentId,
@@ -74,8 +54,8 @@ export const useInstallments = (loans: Loan[], clients: Client[], paidInstallmen
           amount: loan.monthlyPayment,
           dueDate: dueDate.toISOString().split('T')[0],
           status,
-          lateFee,
-          totalAmount,
+          lateFee: 0,
+          totalAmount: loan.monthlyPayment,
           paidDate: isPaid ? new Date().toISOString().split('T')[0] : undefined
         });
       }

@@ -3,13 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 interface InstallmentFiltersProps {
-  filter: "all" | "pending" | "paid" | "overdue";
-  onFilterChange: (filter: "all" | "pending" | "paid" | "overdue") => void;
+  filter: "all" | "pending" | "paid";
+  onFilterChange: (filter: "all" | "pending" | "paid") => void;
   stats: {
     total: number;
     paid: number;
     pending: number;
-    overdue: number;
   };
 }
 
@@ -38,12 +37,6 @@ const InstallmentFilters = ({ filter, onFilterChange, stats }: InstallmentFilter
             onClick={() => onFilterChange("paid")}
           >
             Pagas ({stats.paid})
-          </Button>
-          <Button 
-            variant={filter === "overdue" ? "default" : "outline"}
-            onClick={() => onFilterChange("overdue")}
-          >
-            Atrasadas ({stats.overdue})
           </Button>
         </div>
       </CardContent>

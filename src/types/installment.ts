@@ -8,7 +8,7 @@ export interface Installment {
   totalInstallments: number;
   amount: number;
   dueDate: string;
-  status: "pending" | "paid" | "overdue";
+  status: "pending" | "paid";
   paidDate?: string;
   lateFee?: number;
   totalAmount?: number;
